@@ -1,0 +1,51 @@
+version: "3.7"
+
+services:
+
+  redis:
+    image: redis
+    container_name: scrapper-redis
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - 6379:6379
+
+  redis-commander:
+    container_name: scrapper-redis-commander
+    image: rediscommander/redis-commander
+    restart: always
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - 8081:8081
+
+  server:
+    container_name: scrapper-backend
+    build:
+      context: ./
+    environment:
+      REDIS_URL: redis:6379
+      CHOKIDAR_USEPOLLING: 'true'
+      CHOKIDAR_INTERVAL: 1000
+    ports:
+     - 6000:6000
+    volumes:
+      - ./:/var/app
+    depends_on:
+      - redis
+
+  db:
+    image: postgres
+    restart: always
+    ports:
+      - 8089:5432
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_HOST_AUTH_METHOD: trust
+  
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
