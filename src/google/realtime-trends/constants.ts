@@ -2,7 +2,6 @@ export const LINKS_DATA_QUEUE = "realtime:links"
 export const IDS_DATA_QUEUE = "realtime:ids"
 export const STORY_DATA_QUEUE = "realtime:stories"
 export const QUERY_DATA_QUEUE = "realtime:websites"
-export const FAILED_TASKS_DATA_QUEUE = "realtime:failed:tasks"
 
 /** 
  * Setting offsets for database
@@ -49,15 +48,7 @@ export const IDS_QUEUE_JOB_RUNNING = "scrapper:ids_queue:running"
 export const STORIES_QUEUE_JOB_RUNNING = "scrapper:stories_queue:running"
 export const QUERIES_QUEUE_JOB_RUNNING = "scrapper:queries_queue:running"
 
-export const LINKS_QUEUE_CURRENT_JOBS_FAILED = "scrapper:links_queue:current:failed"
-export const IDS_QUEUE_CURRENT_JOBS_FAILED = "scrapper:ids_queue:current:failed"
-export const STORIES_QUEUE_CURRENT_JOBS_FAILED = "scrapper:stories_queue:current:failed"
-export const QUERIES_QUEUE_CURRENT_JOBS_FAILED = "scrapper:queries_queue:current:failed"
-
-export const LINKS_QUEUE_TOTAL_JOBS_FAILED = "scrapper:links_queue:total:failed"
-export const IDS_QUEUE_TOTAL_JOBS_FAILED = "scrapper:ids_queue:total:failed"
-export const STORIES_QUEUE_TOTAL_JOBS_FAILED = "scrapper:stories_queue:total:failed"
-export const QUERIES_QUEUE_TOTAL_JOBS_FAILED = "scrapper:queries_queue:total:failed"
-
 // await cluster.idle()
 // await cluster.close()
+
+export const GLOBAL_ERRORS_KEY = "scrapper:errors"

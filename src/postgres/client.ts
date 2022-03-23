@@ -10,7 +10,9 @@ export const getPostgresClient = () => {
     database: 'scrapper_2022'
   })
 
-  postgresClient.connect()
+  postgresClient.connect().then(() => console.log("Connected to Postgres")).catch(err => {
+    throw new Error(err)
+  })
 
 
   return postgresClient;

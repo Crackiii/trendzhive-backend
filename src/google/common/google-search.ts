@@ -2,14 +2,7 @@ import { Cluster } from 'puppeteer-cluster'
 import { Readability } from '@mozilla/readability'
 import { JSDOM } from 'jsdom'
 import { Page } from 'puppeteer'
-
-const proxies = [
-  '165.231.130.100:7777',
-  '23.231.12.27:7777', //worked
-  '165.231.130.134:7777',
-  '185.104.218.53:7777', //worked
-  '196.245.239.208:7777'
-]
+import { setGlobalError } from '../realtime-trends/utils'
 
 export const getGoogleSearchResultsByQueries = async (queries: string[]) => {
 
@@ -19,8 +12,9 @@ export const getGoogleSearchResultsByQueries = async (queries: string[]) => {
     monitor: false,
     timeout: 60000,
     puppeteerOptions: {
-      args: ['--lang=en-US', '--window-size=1920,1080', `--proxy-server=${proxies[0]}`],
-      defaultViewport: null
+      args: ['--lang=en-US', '--window-size=1920,1080'],
+      defaultViewport: null,
+      headless: false,
     }
   })
 
@@ -28,7 +22,7 @@ export const getGoogleSearchResultsByQueries = async (queries: string[]) => {
   const queriesData: any = []
 
   cluster.on("taskerror", (err, data) => {
-    console.log(`Error crawling: ${data}: ${err.message}`)
+    setGlobalError(`Error crawling getGoogleSearchResultsByQueries(): ${data}: ${err.message}`)
   })
 
   await cluster.task(async ({ page, data: query }) => {
@@ -90,6 +84,8 @@ export const getWebsiteDataByLink = async (links: string[]) => {
     monitor: false,
     timeout: 30000,
     puppeteerOptions: {
+      headless: false,
+      defaultViewport: null,
       args: ['--lang=en-US', '--window-size=1920,1080']
     }
   })
@@ -97,7 +93,7 @@ export const getWebsiteDataByLink = async (links: string[]) => {
   const websiteData: any = []
 
   cluster.on("taskerror", (err, data) => {
-    console.log(`Error crawling: ${data}: ${err.message}`)
+    setGlobalError(`Error crawling getWebsiteDataByLink(): ${data}: ${err.message}`)
   })
 
   await cluster.task(async ({ page, data: url }) => {

@@ -17,7 +17,7 @@ import { checkScrappingStatus } from './services'
  * Check if we have jobs in linksQueue
  * Refill it if not
 */
-export const checkLinksQueue = cron.schedule('0 0 0 * * *', async () => {
+export const checkLinksQueue = cron.schedule('*/1 * * * * *', async () => {
   const isBusy = await isQueueBusy(constants.LINKS_DATA_QUEUE)
 
   await setQueueStatus(constants.LINKS_QUEUE_STATUS, isBusy ? 'Busy' : 'Idle')
@@ -29,20 +29,14 @@ export const checkLinksQueue = cron.schedule('0 0 0 * * *', async () => {
     await getQueueTotalJobs(linksQueue, 'completed', constants.LINKS_QUEUE_TOTAL_JOBS_PROCESSED)
   )
 
-  await setQueueStatus(
-    constants.LINKS_QUEUE_TOTAL_JOBS_FAILED,
-    await getQueueTotalJobs(linksQueue, 'failed', constants.LINKS_QUEUE_TOTAL_JOBS_FAILED)
-  )
-
   await emptyQueue(constants.LINKS_DATA_QUEUE)
 
   const linksOffset = await getOffset(constants.REALTIME_LINKS_OFFSET_KEY)
   const links = await getLinks(linksOffset)
-
+  
   if (!links.length) await putLinks()
 
   if (links.length < 30) return
-
 
   for (const link of links) {
     fillQueueWithData(constants.LINKS_DATA_QUEUE, link)
@@ -55,7 +49,7 @@ export const checkLinksQueue = cron.schedule('0 0 0 * * *', async () => {
  * Check if we have IDs in queue
  * Refill it if not
 */
-export const checkIdsQueue = cron.schedule('0 0 0 * * *', async () => {
+export const checkIdsQueue = cron.schedule('*/1 * * * * *', async () => {
   const isBusy = await isQueueBusy(constants.IDS_DATA_QUEUE)
 
   await setQueueStatus(constants.IDS_QUEUE_STATUS, isBusy ? 'Busy' : 'Idle')
@@ -65,11 +59,6 @@ export const checkIdsQueue = cron.schedule('0 0 0 * * *', async () => {
   await setQueueStatus(
     constants.IDS_QUEUE_TOTAL_JOBS_PROCESSED,
     await getQueueTotalJobs(idsQueue, 'completed', constants.IDS_QUEUE_TOTAL_JOBS_PROCESSED)
-  )
-
-  await setQueueStatus(
-    constants.IDS_QUEUE_TOTAL_JOBS_FAILED,
-    await getQueueTotalJobs(idsQueue, 'failed', constants.IDS_QUEUE_TOTAL_JOBS_FAILED)
   )
 
   await emptyQueue(constants.IDS_DATA_QUEUE)
@@ -90,7 +79,7 @@ export const checkIdsQueue = cron.schedule('0 0 0 * * *', async () => {
  * Check if we have stories in queue
  * Scrap topics data 
 */
-export const checkStoriesQueue = cron.schedule('0 0 0 * * *', async () => {
+export const checkStoriesQueue = cron.schedule('*/1 * * * * *', async () => {
   const isBusy = await isQueueBusy(constants.STORY_DATA_QUEUE)
 
   await setQueueStatus(constants.STORIES_QUEUE_STATUS, isBusy ? 'Busy' : 'Idle')
@@ -100,11 +89,6 @@ export const checkStoriesQueue = cron.schedule('0 0 0 * * *', async () => {
   await setQueueStatus(
     constants.STORIES_QUEUE_TOTAL_JOBS_PROCESSED,
     await getQueueTotalJobs(storiesQueue, 'completed', constants.STORIES_QUEUE_TOTAL_JOBS_PROCESSED)
-  )
-
-  await setQueueStatus(
-    constants.STORIES_QUEUE_TOTAL_JOBS_FAILED,
-    await getQueueTotalJobs(storiesQueue, 'failed', constants.STORIES_QUEUE_TOTAL_JOBS_FAILED)
   )
 
   await emptyQueue(constants.STORY_DATA_QUEUE)
@@ -129,7 +113,7 @@ export const checkStoriesQueue = cron.schedule('0 0 0 * * *', async () => {
  * Check if we have websites links in queue
  * Scrap website data 
 */
-export const checkQueriesQueue = cron.schedule('0 0 0 * * *', async () => {
+export const checkQueriesQueue = cron.schedule('*/1 * * * * *', async () => {
   const isBusy = await isQueueBusy(constants.QUERY_DATA_QUEUE)
 
   await setQueueStatus(constants.QUERIES_QUEUE_STATUS, isBusy ? 'Busy' : 'Idle')
@@ -139,11 +123,6 @@ export const checkQueriesQueue = cron.schedule('0 0 0 * * *', async () => {
   await setQueueStatus(
     constants.QUERIES_QUEUE_TOTAL_JOBS_PROCESSED,
     await getQueueTotalJobs(queriesQueue, 'completed', constants.QUERIES_QUEUE_TOTAL_JOBS_PROCESSED)
-  )
-
-  await setQueueStatus(
-    constants.QUERIES_QUEUE_TOTAL_JOBS_FAILED,
-    await getQueueTotalJobs(queriesQueue, 'failed', constants.QUERIES_QUEUE_TOTAL_JOBS_FAILED)
   )
 
   await emptyQueue(constants.QUERY_DATA_QUEUE)
@@ -166,4 +145,4 @@ export const checkQueriesQueue = cron.schedule('0 0 0 * * *', async () => {
 /** 
  * Check scrapping status
 */
-cron.schedule('0 0 0 * * *', checkScrappingStatus)
+cron.schedule('*/1 * * * * *', checkScrappingStatus)

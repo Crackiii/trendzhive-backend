@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model scrapping_links {
+  id            Int      @id @default(autoincrement())
+  country       String   @db.VarChar(50)
+  country_short  String   @db.VarChar(50)
+  category      String   @db.VarChar(50)
+  category_short String   @db.VarChar(50)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @default(now())
+}
+
+model story_ids {
+  id            Int      @id @default(autoincrement())
+  country       String   @db.VarChar(100)
+  category      String   @db.VarChar(100)
+  story_id       String   @db.VarChar(200)
+  related_link   String   @db.VarChar(255)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @default(now())
+}
+
+model story_data {
+  id              Int @id @default(autoincrement())
+  related_queries  String @db.Text
+  related_articles String @db.Text
+  related_story_id  String @db.VarChar(255)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @default(now())
+}
+
+model query_data {
+  id           Int      @id @default(autoincrement())
+  query        String   @db.Text
+  links        String   @db.Text
+  related_story String   @db.VarChar(255)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @default(now())
+}
+
+model website_data {
+  id             Int    @id @default(autoincrement())
+  titles         String @db.Text
+  descriptions   String @db.Text
+  keywords       String @db.Text
+  favicon        String @db.Text
+  social         String @db.Text
+  images         String @db.Text
+  html           String @db.Text
+  related_query_id String @db.VarChar(255)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @default(now())
+}

@@ -13,7 +13,7 @@ import { getStoryDetailById } from "../../api/common"
 import { putStoryDetails, putWebsiteData, putQueryResults, putStoriesIds } from "./queries.db"
 import { getGoogleSearchResultsByQueries, getWebsiteDataByLink } from "../common/google-search"
 import * as constants from './constants'
-import { createTitle, getRedisValue, queueJobsCompleted, queueJobsFailed, setQueueStatus } from "./utils"
+import { createTitle, getGlobalErrors, getRedisValue, queueJobsCompleted, setGlobalError, setQueueStatus } from "./utils"
 
 
 export const getRealTimeStoryIdsByLink = async (configs?: Configs) => {
@@ -44,13 +44,13 @@ linksQueue.process(1, async (job: Job) => {
 
   await Promise.all([
     setQueueStatus(constants.LINKS_QUEUE_CURRENT_JOBS_PROCESSED, await queueJobsCompleted(linksQueue)),
-    setQueueStatus(constants.LINKS_QUEUE_CURRENT_JOBS_FAILED, await queueJobsFailed(linksQueue)),
     setQueueStatus(constants.LINKS_QUEUE_JOB_RUNNING, `${job.data.country_short} - ${job.data.category_short}`)
   ]).catch(console.log)
 
   const category = job.data.category_short
   const country = job.data.country_short
 
+  try {
   const storiesIds = await getRealTimeStoryIdsByLink({
     CATGEORY: category,
     LOCATION: country
@@ -63,6 +63,9 @@ linksQueue.process(1, async (job: Job) => {
       country
     })
   }
+} catch(error) {
+  setGlobalError(`Error linksQueue - Job # ${job.id} : ${error.message}`)
+}
 })
 
 // Processing ids queue jobs
@@ -70,12 +73,11 @@ idsQueue.process(1, async (job) => {
 
   await Promise.all([
     setQueueStatus(constants.IDS_QUEUE_CURRENT_JOBS_PROCESSED, await queueJobsCompleted(idsQueue)),
-    setQueueStatus(constants.IDS_QUEUE_CURRENT_JOBS_FAILED, await queueJobsFailed(idsQueue)),
-    setQueueStatus(constants.IDS_QUEUE_JOB_RUNNING, job.data.stories_ids)
+    setQueueStatus(constants.IDS_QUEUE_JOB_RUNNING, job.data.story_id)
   ])
-
+  try {
   const storyDetails = await getStoryDetailById(
-    job.data.stories_ids,
+    job.data.story_id,
     {
       CATGEORY: job.data.category,
       LOCATION: job.data.country
@@ -90,6 +92,9 @@ idsQueue.process(1, async (job) => {
     articles,
     id: job.data.id
   })
+} catch(error) {
+  setGlobalError(`Error idsQueue - Job # ${job.id} : ${error.message}`)
+}
 })
 
 // Processing stories queue jobs
@@ -97,10 +102,9 @@ storiesQueue.process(1, async (job) => {
 
   await Promise.all([
     setQueueStatus(constants.STORIES_QUEUE_CURRENT_JOBS_PROCESSED, await queueJobsCompleted(storiesQueue)),
-    setQueueStatus(constants.STORIES_QUEUE_CURRENT_JOBS_FAILED, await queueJobsFailed(storiesQueue)),
     setQueueStatus(constants.STORIES_QUEUE_JOB_RUNNING, `Queries to scrap: ${job.data.queries.length}`)
   ])
-
+  try {
   const googleSearchResults = await getGoogleSearchResultsByQueries(job.data.queries)
 
   for (const result of googleSearchResults) {
@@ -110,6 +114,9 @@ storiesQueue.process(1, async (job) => {
       id: job.data.story_id,
     })
   }
+} catch(error) {
+  setGlobalError(`Error storiesQueue - Job # ${job.id} : ${error.message}`)
+}
 })
 
 // Processing queries queue jobs
@@ -117,10 +124,10 @@ queriesQueue.process(1, async (job) => {
 
   await Promise.all([
     setQueueStatus(constants.QUERIES_QUEUE_CURRENT_JOBS_PROCESSED, await queueJobsCompleted(queriesQueue)),
-    setQueueStatus(constants.QUERIES_QUEUE_CURRENT_JOBS_FAILED, await queueJobsFailed(queriesQueue)),
     setQueueStatus(constants.QUERIES_QUEUE_JOB_RUNNING, `Links to process: ${job.data.links.length}`)
   ])
 
+  try {
   const links = job.data.links
     .map((o: any) => o.link)
     .filter((link: string) => link.slice(link.length - 4) !== '.pdf'); // get rid of pdf links
@@ -139,6 +146,9 @@ queriesQueue.process(1, async (job) => {
       related_query_id: query_id
     })
   }
+} catch(error) {
+  setGlobalError(`Error queriesQueue - Job # ${job.id} : ${error.message}`)
+}
 })
 
 
@@ -162,21 +172,12 @@ export const checkScrappingStatus = async () => {
   const storiesQueueJobRunning = await getRedisValue(constants.STORIES_QUEUE_JOB_RUNNING)
   const queriesQueueJobRunning = await getRedisValue(constants.QUERIES_QUEUE_JOB_RUNNING)
 
-  const linksQueueJobsFailed = await getRedisValue(constants.LINKS_QUEUE_CURRENT_JOBS_FAILED)
-  const idsQueueJobsFailed = await getRedisValue(constants.IDS_QUEUE_CURRENT_JOBS_FAILED)
-  const storiesQueueJobsFailed = await getRedisValue(constants.STORIES_QUEUE_CURRENT_JOBS_FAILED)
-  const queriesQueueJobsFailed = await getRedisValue(constants.QUERIES_QUEUE_CURRENT_JOBS_FAILED)
-
   const linksQueueTotalJobsProcessed = await getRedisValue(constants.LINKS_QUEUE_TOTAL_JOBS_PROCESSED);
   const idsQueueTotalJobsProcessed = await getRedisValue(constants.IDS_QUEUE_TOTAL_JOBS_PROCESSED);
   const storiesQueueTotalJobsProcessed = await getRedisValue(constants.STORIES_QUEUE_TOTAL_JOBS_PROCESSED);
   const queriesQueueTotalJobsProcessed = await getRedisValue(constants.QUERIES_QUEUE_TOTAL_JOBS_PROCESSED);
 
-  const linkQueueTotalJobsFailed = await getRedisValue(constants.LINKS_QUEUE_TOTAL_JOBS_FAILED);
-  const idsQueueTotalJobsFailed = await getRedisValue(constants.IDS_QUEUE_TOTAL_JOBS_FAILED);
-  const storiesQueueTotalJobsFailed = await getRedisValue(constants.STORIES_QUEUE_TOTAL_JOBS_FAILED);
-  const queriesQueueTotalJobsFailed = await getRedisValue(constants.QUERIES_QUEUE_TOTAL_JOBS_FAILED);
-
+  const map = await getGlobalErrors()
 
   console.clear()
   console.table({
@@ -192,18 +193,35 @@ export const checkScrappingStatus = async () => {
     [createTitle('idsQueueJobRunning')]: JSON.parse(idsQueueJobRunning) || '-',
     [createTitle('storiesQueueJobRunning')]: JSON.parse(storiesQueueJobRunning) || '-',
     [createTitle('queriesQueueJobRunning')]: JSON.parse(queriesQueueJobRunning) || '-',
-    [createTitle('linksQueueJobsFailed')]: JSON.parse(linksQueueJobsFailed) || 0,
-    [createTitle('idsQueueJobsFailed')]: JSON.parse(idsQueueJobsFailed) || 0,
-    [createTitle('storiesQueueJobsFailed')]: JSON.parse(storiesQueueJobsFailed) || 0,
-    [createTitle('queriesQueueJobsFailed')]: JSON.parse(queriesQueueJobsFailed) || 0,
     [createTitle('linksQueueTotalJobsProcessed')]: JSON.parse(linksQueueTotalJobsProcessed) || 0,
     [createTitle('idsQueueTotalJobsProcessed')]: JSON.parse(idsQueueTotalJobsProcessed) || 0,
     [createTitle('storiesQueueTotalJobsProcessed')]: JSON.parse(storiesQueueTotalJobsProcessed) || 0,
     [createTitle('queriesQueueTotalJobsProcessed')]: JSON.parse(queriesQueueTotalJobsProcessed) || 0,
-    [createTitle('linkQueueTotalJobsFailed')]: JSON.parse(linkQueueTotalJobsFailed) || 0,
-    [createTitle('idsQueueTotalJobsFailed')]: JSON.parse(idsQueueTotalJobsFailed) || 0,
-    [createTitle('storiesQueueTotalJobsFailed')]: JSON.parse(storiesQueueTotalJobsFailed) || 0,
-    [createTitle('queriesQueueTotalJobsFailed')]: JSON.parse(queriesQueueTotalJobsFailed) || 0,
+  })
+
+  console.table({
+    'Error 400 - idsQueue': map?.['idsQueue']?.['400'] || '-',
+    'Error 400 - linksQueue': map?.['linksQueue']?.['400'] || '-',
+    'Error 400 - storiesQueue': map?.['storiesQueue']?.['400'] || '-',
+    'Error 400 - queriesQueue': map?.['queriesQueue']?.['400'] || '-',
+    'Error 429 - idsQueue': map?.['idsQueue']?.['429'] || '-',
+    'Error 429 - linksQueue': map?.['linksQueue']?.['429'] || '-',
+    'Error 429 - storiesQueue': map?.['storiesQueue']?.['429'] || '-',
+    'Error 429 - queriesQueue': map?.['queriesQueue']?.['429'] || '-',
+    'Error 429 - getGoogleSearchResultsByQueries':  map?.['getGoogleSearchResultsByQueries']?.['429'] || '-',
+    'Error 429 - getWebsiteDataByLink':  map?.['getWebsiteDataByLink']?.['429'] || '-',
+    'Error database - getLinks': map?.['getLinks']?.['db'] || '-',
+    'Error database - putLinks': map?.['putLinks']?.['db'] || '-',
+    'Error database - getStoriesIds': map?.['getStoriesIds']?.['db'] || '-',
+    'Error database - putStoriesIds': map?.['putStoriesIds']?.['db'] || '-',
+    'Error database - getStoriesDetails': map?.['getStoriesDetails']?.['db'] || '-',
+    'Error database - putStoryDetails': map?.['putStoryDetails']?.['db'] || '-',
+    'Error database - getQueryResults': map?.['getQueryResults']?.['db'] || '-',
+    'Error database - putQueryResults': map?.['getLinks']?.['db'] || '-',
+    'Error database - getWebsitesData': map?.['getWebsitesData']?.['db'] || '-',
+    'Error database - putWebsiteData': map?.['putWebsiteData']?.['db'] || '-',
+    'Error crawler - getGoogleSearchResultsByQueries':  map?.['getGoogleSearchResultsByQueries'] || '-',
+    'Error crawler - getWebsiteDataByLink':  map?.['getWebsiteDataByLink'] || '-',
   })
 
 }

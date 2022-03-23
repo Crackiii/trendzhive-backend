@@ -1,9 +1,26 @@
 import { realtime_categories, realtime_countries } from "../../config"
 import { getPostgresClient } from "../../postgres/client"
+import { setGlobalError } from "./utils"
 
 const postgresClient = getPostgresClient()
 
+export const getLinks = async (offset: number) => {
 
+  try {
+    const results = await postgresClient.query(`
+      SELECT *
+      FROM scrapping_links
+      ORDER BY id asc
+      LIMIT 30
+      OFFSET ${offset}
+    `)
+
+    return results.rows
+  } catch (error) {
+    setGlobalError(`Error database getLinks() : ${error.message}`)
+    throw new Error(error)
+  }
+}
 
 export const putLinks = async () => {
 
@@ -20,23 +37,7 @@ export const putLinks = async () => {
       }
     }
   } catch (error) {
-    throw new Error(error)
-  }
-}
-
-export const getLinks = async (offset: number) => {
-
-  try {
-    const results = await postgresClient.query(`
-      SELECT *
-      FROM scrapping_links
-      ORDER BY id asc
-      LIMIT 30
-      OFFSET ${offset}
-    `)
-
-    return results.rows
-  } catch (error) {
+    setGlobalError(`Error database putLinks() : ${error.message}`)
     throw new Error(error)
   }
 }
@@ -53,6 +54,7 @@ export const getStoriesIds = async (offset: number) => {
 
     return results.rows
   } catch (error) {
+    setGlobalError(`Error database getStoriesIds(): ${error.message}`)
     throw new Error(error)
   }
 }
@@ -67,8 +69,8 @@ interface PutStoryIdsParams {
 export const putStoriesIds = async ({ country, category, id }: PutStoryIdsParams) => {
 
   const query = {
-    text: `INSERT INTO story_ids (country, category, stories_ids) VALUES ($1, $2, $3)`,
-    values: [country, category, id]
+    text: `INSERT INTO story_ids (country, category, story_id, related_link) VALUES ($1, $2, $3, $4)`,
+    values: [country, category, id, '-']
   }
 
   try {
@@ -76,6 +78,7 @@ export const putStoriesIds = async ({ country, category, id }: PutStoryIdsParams
 
     return true
   } catch (error) {
+    setGlobalError(`Error database putStoriesIds(): ${error.message}`)
     throw new Error(error)
   }
 }
@@ -91,6 +94,7 @@ export const getStoriesDetails = async (offset: number) => {
 
     return results.rows
   } catch (error) {
+    setGlobalError(`Error database getStoriesDetails(): ${error.message}`)
     throw new Error(error)
   }
 }
@@ -103,7 +107,7 @@ interface PutStoryDetailsParams {
 export const putStoryDetails = async ({ queries, articles, id }: PutStoryDetailsParams) => {
 
   const query = {
-    text: `INSERT INTO story_data(related_queries, related_articles, related_link) VALUES($1, $2, $3)`,
+    text: `INSERT INTO story_data(related_queries, related_articles, related_story_id) VALUES($1, $2, $3)`,
     values: [
       `${JSON.stringify(queries)}`,
       `${JSON.stringify(articles)}`,
@@ -116,6 +120,7 @@ export const putStoryDetails = async ({ queries, articles, id }: PutStoryDetails
 
     return true
   } catch (error) {
+    setGlobalError(`Error database putStoryDetails(): ${error.message}`)
     throw new Error(error)
   }
 }
@@ -132,6 +137,7 @@ export const getQueryResults = async (offset: number) => {
 
     return results.rows
   } catch (error) {
+    setGlobalError(`Error database getQueryResults(): ${error.message}`)
     throw new Error(error)
   }
 }
@@ -156,6 +162,7 @@ export const putQueryResults = async ({ query, links, id }: PutQueryResultsParam
     await postgresClient.query(sqlQuery)
     return true
   } catch (error) {
+    setGlobalError(`Error database putQueryResults(): ${error.message}`)
     throw new Error(error)
   }
 }
@@ -163,7 +170,6 @@ export const putQueryResults = async ({ query, links, id }: PutQueryResultsParam
 
 
 export const getWebsitesData = async (offset: number) => {
-
 
   try {
     const results = await postgresClient.query(`
@@ -184,7 +190,7 @@ export const getWebsitesData = async (offset: number) => {
       return row
     })
   } catch (error) {
-    console.log(error)
+    setGlobalError(`Error database getWebsitesData(): ${error.message}`)
     throw new Error(error)
   }
 }
@@ -202,8 +208,8 @@ interface PutWebsiteDataParams {
 export const putWebsiteData = async ({ title, descriptions, keywords, social, images, html, related_query_id }: PutWebsiteDataParams) => {
 
   const query = {
-    text: `INSERT INTO website_data(title, descriptions, keywords, social, images, html, related_query_id) 
-            VALUES($1, $2, $3, $4, $5, $6, $7)`,
+    text: `INSERT INTO website_data(titles, descriptions, keywords, social, images, html, related_query_id, favicon) 
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8)`,
     values: [
       `${JSON.stringify(title)}`,
       `${JSON.stringify(descriptions)}`,
@@ -211,14 +217,15 @@ export const putWebsiteData = async ({ title, descriptions, keywords, social, im
       `${JSON.stringify(social)}`,
       `${JSON.stringify(images)}`,
       `${html}`,
-      `${related_query_id}`
+      `${related_query_id}`,
+      `-`
     ]
   }
   try {
     await postgresClient.query(query)
     return true
   } catch (error) {
-    console.log(error)
+    setGlobalError(`Error database putWebsiteData(): ${error.message}`)
     throw new Error(error)
   }
 }
