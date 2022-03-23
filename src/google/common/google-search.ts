@@ -14,7 +14,7 @@ export const getGoogleSearchResultsByQueries = async (queries: string[]) => {
     puppeteerOptions: {
       args: ['--lang=en-US', '--window-size=1920,1080'],
       defaultViewport: null,
-      headless: false,
+      headless: true,
     }
   })
 
@@ -84,7 +84,7 @@ export const getWebsiteDataByLink = async (links: string[]) => {
     monitor: false,
     timeout: 30000,
     puppeteerOptions: {
-      headless: false,
+      headless: true,
       defaultViewport: null,
       args: ['--lang=en-US', '--window-size=1920,1080']
     }

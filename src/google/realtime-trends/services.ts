@@ -14,6 +14,19 @@ import { putStoryDetails, putWebsiteData, putQueryResults, putStoriesIds } from 
 import { getGoogleSearchResultsByQueries, getWebsiteDataByLink } from "../common/google-search"
 import * as constants from './constants'
 import { createTitle, getGlobalErrors, getRedisValue, queueJobsCompleted, setGlobalError, setQueueStatus } from "./utils"
+import * as os from 'os-utils'
+
+const getCpuUsage = async () => {
+  const usage = await new Promise((resolve) => os.cpuUsage(resolve))
+  const loadAvg = await new Promise((resolve) => resolve(os.loadavg(1)))
+  const sysUpTime = await new Promise((resolve) => resolve(os.sysUptime()))
+  const processUptime = await new Promise((resolve) => resolve(os.processUptime()))
+
+  return {usage, loadAvg, sysUpTime, processUptime}
+}
+
+
+
 
 
 export const getRealTimeStoryIdsByLink = async (configs?: Configs) => {
@@ -179,6 +192,8 @@ export const checkScrappingStatus = async () => {
 
   const map = await getGlobalErrors()
 
+  const {usage, loadAvg} = await getCpuUsage()
+
   console.clear()
   console.table({
     [createTitle('linksQueueStatus')]: JSON.parse(linksQueueStatus) || '-',
@@ -223,5 +238,12 @@ export const checkScrappingStatus = async () => {
     'Error crawler - getGoogleSearchResultsByQueries':  map?.['getGoogleSearchResultsByQueries'] || '-',
     'Error crawler - getWebsiteDataByLink':  map?.['getWebsiteDataByLink'] || '-',
   })
+
+  console.table({
+    'CPU Usage': Number((Number(usage) * 100).toFixed(2)),
+    'Load Average': Number(Number(loadAvg).toFixed(2)),
+  })
+
+
 
 }
