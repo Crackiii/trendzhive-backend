@@ -43,7 +43,7 @@ CREATE TABLE "query_data" (
     "links" TEXT NOT NULL,
     "related_story" VARCHAR(255) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "query_data_pkey" PRIMARY KEY ("id")
 );
@@ -58,7 +58,9 @@ CREATE TABLE "website_data" (
     "social" TEXT NOT NULL,
     "images" TEXT NOT NULL,
     "html" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
     "related_query_id" VARCHAR(255) NOT NULL,
+    "all_images" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 

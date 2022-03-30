@@ -31,7 +31,7 @@ export const putLinks = async () => {
 
         await postgresClient.query(`
           INSERT INTO 
-            scrapping_links(category, category_short, country, country_short)
+          scrapping_links(category, category_short, country, country_short)
             VALUES('-', '${category}', '${countryName.trim()}', '${countryCode.trim()}')
         `)
       }
@@ -204,12 +204,17 @@ interface PutWebsiteDataParams {
   images: string[]
   html: string
   related_query_id: string
+  url: string
+  favicon: string
+  allImages: string[]
 }
-export const putWebsiteData = async ({ title, descriptions, keywords, social, images, html, related_query_id }: PutWebsiteDataParams) => {
+export const putWebsiteData = async ({ title, descriptions, keywords, social, images, html, related_query_id, url, favicon, allImages }: PutWebsiteDataParams) => {
+
+
 
   const query = {
-    text: `INSERT INTO website_data(titles, descriptions, keywords, social, images, html, related_query_id, favicon) 
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8)`,
+    text: `INSERT INTO website_data(titles, descriptions, keywords, social, images, html, related_query_id, favicon, url, all_images) 
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
     values: [
       `${JSON.stringify(title)}`,
       `${JSON.stringify(descriptions)}`,
@@ -218,7 +223,9 @@ export const putWebsiteData = async ({ title, descriptions, keywords, social, im
       `${JSON.stringify(images)}`,
       `${html}`,
       `${related_query_id}`,
-      `-`
+      `${favicon}`,
+      `${url}`,
+      `${JSON.stringify(allImages)}`
     ]
   }
   try {

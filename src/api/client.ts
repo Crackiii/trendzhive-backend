@@ -1,5 +1,6 @@
 import axios from 'axios-https-proxy-fix'
 import { cookieValue } from './google-trends'
+import * as puppeteer from 'puppeteer'
 
 export const DEFAULT_LANGUAGE = 'en-US'
 export const DEFAULT_TIMEZONE = '-60'
@@ -87,3 +88,13 @@ export const getAxiosClient = () => {
   return client
 }
 
+let browser: puppeteer.Browser = null;
+export const getPuppeteerClient = async () => {
+  if(!browser) {
+    browser = await puppeteer.connect({
+      browserWSEndpoint: 'ws://browserless:8082'
+    })
+  }
+
+  return browser;
+}

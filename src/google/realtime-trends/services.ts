@@ -7,14 +7,14 @@ import {
   DEFAULT_TIMEZONE,
   DEFAULT_CATEGORY
 } from "../../api/client"
-import { linksQueue, idsQueue, storiesQueue, queriesQueue } from "./bull/queues"
-import { Job } from "bull"
-import { getStoryDetailById } from "../../api/common"
-import { putStoryDetails, putWebsiteData, putQueryResults, putStoriesIds } from "./queries.db"
-import { getGoogleSearchResultsByQueries, getWebsiteDataByLink } from "../common/google-search"
 import * as constants from './constants'
 import { createTitle, getGlobalErrors, getRedisValue, queueJobsCompleted, setGlobalError, setQueueStatus } from "./utils"
 import * as os from 'os-utils'
+import { idsQueue, linksQueue, queriesQueue, storiesQueue } from "./bull/queues"
+import { putQueryResults, putStoriesIds, putStoryDetails, putWebsiteData } from "./queries.db"
+import { getStoryDetailById } from "../../api/common"
+import { Job } from "bull"
+import axios from "axios"
 
 const getCpuUsage = async () => {
   const usage = await new Promise((resolve) => os.cpuUsage(resolve))
@@ -22,12 +22,8 @@ const getCpuUsage = async () => {
   const sysUpTime = await new Promise((resolve) => resolve(os.sysUptime()))
   const processUptime = await new Promise((resolve) => resolve(os.processUptime()))
 
-  return {usage, loadAvg, sysUpTime, processUptime}
+  return { usage, loadAvg, sysUpTime, processUptime }
 }
-
-
-
-
 
 export const getRealTimeStoryIdsByLink = async (configs?: Configs) => {
   const client = getAxiosClient()
@@ -64,21 +60,21 @@ linksQueue.process(1, async (job: Job) => {
   const country = job.data.country_short
 
   try {
-  const storiesIds = await getRealTimeStoryIdsByLink({
-    CATGEORY: category,
-    LOCATION: country
-  })
-
-  for (const id of storiesIds) {
-    await putStoriesIds({
-      id,
-      category,
-      country
+    const storiesIds = await getRealTimeStoryIdsByLink({
+      CATGEORY: category,
+      LOCATION: country
     })
+
+    for (const id of storiesIds) {
+      await putStoriesIds({
+        id,
+        category,
+        country
+      })
+    }
+  } catch (error) {
+    setGlobalError(`Error linksQueue - Job # ${job.id} : ${error.message}`)
   }
-} catch(error) {
-  setGlobalError(`Error linksQueue - Job # ${job.id} : ${error.message}`)
-}
 })
 
 // Processing ids queue jobs
@@ -89,25 +85,25 @@ idsQueue.process(1, async (job) => {
     setQueueStatus(constants.IDS_QUEUE_JOB_RUNNING, job.data.story_id)
   ])
   try {
-  const storyDetails = await getStoryDetailById(
-    job.data.story_id,
-    {
-      CATGEORY: job.data.category,
-      LOCATION: job.data.country
-    }
-  )
+    const storyDetails = await getStoryDetailById(
+      job.data.story_id,
+      {
+        CATGEORY: job.data.category,
+        LOCATION: job.data.country
+      }
+    )
 
-  const articles = storyDetails.articles
-  const relatedQueries = JSON.parse(storyDetails.relatedQueries).default.queries.map((q: any) => q.query)
+    const articles = storyDetails.articles
+    const relatedQueries = JSON.parse(storyDetails.relatedQueries).default.queries.map((q: any) => q.query)
 
-  await putStoryDetails({
-    queries: relatedQueries,
-    articles,
-    id: job.data.id
-  })
-} catch(error) {
-  setGlobalError(`Error idsQueue - Job # ${job.id} : ${error.message}`)
-}
+    await putStoryDetails({
+      queries: relatedQueries,
+      articles,
+      id: job.data.id
+    })
+  } catch (error) {
+    setGlobalError(`Error idsQueue - Job # ${job.id} : ${error.message}`)
+  }
 })
 
 // Processing stories queue jobs
@@ -118,18 +114,23 @@ storiesQueue.process(1, async (job) => {
     setQueueStatus(constants.STORIES_QUEUE_JOB_RUNNING, `Queries to scrap: ${job.data.queries.length}`)
   ])
   try {
-  const googleSearchResults = await getGoogleSearchResultsByQueries(job.data.queries)
+    const googleSearchResults = await axios.post('https://google.trendscads.com/google-search/queries', { queries: job.data.queries })
 
-  for (const result of googleSearchResults) {
-    await putQueryResults({
-      query: result.query,
-      links: result.links,
-      id: job.data.story_id,
-    })
+    if (/Failed to launch the browser process/gmi.test(googleSearchResults.data)) {
+      setGlobalError(`Error storiesQueue - Job # ${job.id} : ${googleSearchResults.data}`)
+      return;
+    }
+
+    for (const result of googleSearchResults.data) {
+      await putQueryResults({
+        query: result.query,
+        links: result.links,
+        id: job.data.story_id,
+      })
+    }
+  } catch (error) {
+    setGlobalError(`Error storiesQueue - Job # ${job.id} : ${error.message}`)
   }
-} catch(error) {
-  setGlobalError(`Error storiesQueue - Job # ${job.id} : ${error.message}`)
-}
 })
 
 // Processing queries queue jobs
@@ -141,28 +142,37 @@ queriesQueue.process(1, async (job) => {
   ])
 
   try {
-  const links = job.data.links
-    .map((o: any) => o.link)
-    .filter((link: string) => link.slice(link.length - 4) !== '.pdf'); // get rid of pdf links
-  const query_id = job.data.query_id;
+    const links = job.data.links
+      .map((o: any) => o.link)
+      .filter((link: string) => link.slice(link.length - 4) !== '.pdf'); // get rid of pdf links
+    const query_id = job.data.query_id;
 
-  const websitesData = await getWebsiteDataByLink(links)
+    const websitesData = await axios.post('https://google.trendscads.com/google-search/links', { links })
 
-  for (const website of websitesData) {
-    await putWebsiteData({
-      title: [website.metaData.title],
-      keywords: website.metaData.keywords,
-      social: [website.metaData.facebook, website.metaData.twitter],
-      images: website.metaData.images,
-      html: website.html,
-      descriptions: website.metaData.description,
-      related_query_id: query_id
-    })
+    if (/Failed to launch the browser process/gmi.test(websitesData.data)) {
+      setGlobalError(`Error storiesQueue - Job # ${job.id} : ${websitesData.data}`)
+      return;
+    }
+
+    for (const website of websitesData.data) {
+      await putWebsiteData({
+        title: [website.metaData.title],
+        keywords: website.metaData.keywords,
+        social: [website.metaData.facebook, website.metaData.twitter],
+        images: website.metaData.images,
+        html: website.html,
+        descriptions: website.metaData.description,
+        url: website.metaData.url,
+        favicon: website.metaData.favicon,
+        allImages: website.metaData.allImages,
+        related_query_id: query_id
+      })
+    }
+  } catch (error) {
+    setGlobalError(`Error queriesQueue - Job # ${job.id} : ${error.message}`)
   }
-} catch(error) {
-  setGlobalError(`Error queriesQueue - Job # ${job.id} : ${error.message}`)
-}
 })
+
 
 
 /** 
@@ -192,7 +202,7 @@ export const checkScrappingStatus = async () => {
 
   const map = await getGlobalErrors()
 
-  const {usage, loadAvg} = await getCpuUsage()
+  const { usage, loadAvg } = await getCpuUsage()
 
   console.clear()
   console.table({
@@ -223,8 +233,8 @@ export const checkScrappingStatus = async () => {
     'Error 429 - linksQueue': map?.['linksQueue']?.['429'] || '-',
     'Error 429 - storiesQueue': map?.['storiesQueue']?.['429'] || '-',
     'Error 429 - queriesQueue': map?.['queriesQueue']?.['429'] || '-',
-    'Error 429 - getGoogleSearchResultsByQueries':  map?.['getGoogleSearchResultsByQueries']?.['429'] || '-',
-    'Error 429 - getWebsiteDataByLink':  map?.['getWebsiteDataByLink']?.['429'] || '-',
+    'Error 429 - getGoogleSearchResultsByQueries': map?.['getGoogleSearchResultsByQueries']?.['429'] || '-',
+    'Error 429 - getWebsiteDataByLink': map?.['getWebsiteDataByLink']?.['429'] || '-',
     'Error database - getLinks': map?.['getLinks']?.['db'] || '-',
     'Error database - putLinks': map?.['putLinks']?.['db'] || '-',
     'Error database - getStoriesIds': map?.['getStoriesIds']?.['db'] || '-',
@@ -235,15 +245,13 @@ export const checkScrappingStatus = async () => {
     'Error database - putQueryResults': map?.['getLinks']?.['db'] || '-',
     'Error database - getWebsitesData': map?.['getWebsitesData']?.['db'] || '-',
     'Error database - putWebsiteData': map?.['putWebsiteData']?.['db'] || '-',
-    'Error crawler - getGoogleSearchResultsByQueries':  map?.['getGoogleSearchResultsByQueries'] || '-',
-    'Error crawler - getWebsiteDataByLink':  map?.['getWebsiteDataByLink'] || '-',
+    'Error crawler - getGoogleSearchResultsByQueries': map?.['getGoogleSearchResultsByQueries'] || '-',
+    'Error crawler - getWebsiteDataByLink': map?.['getWebsiteDataByLink'] || '-',
   })
 
   console.table({
     'CPU Usage': Number((Number(usage) * 100).toFixed(2)),
     'Load Average': Number(Number(loadAvg).toFixed(2)),
   })
-
-
 
 }

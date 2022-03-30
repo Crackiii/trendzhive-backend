@@ -1,22 +1,105 @@
 import { Cluster } from 'puppeteer-cluster'
+import { Cluster as ClusterConnect } from 'puppeteer-cluster-connect'
 import { Readability } from '@mozilla/readability'
 import { JSDOM } from 'jsdom'
 import { Page } from 'puppeteer'
+import * as puppeteer from 'puppeteer'
+import * as puppeteerCore from 'puppeteer-core'
 import { setGlobalError } from '../realtime-trends/utils'
+
+let instance: puppeteer.Browser = null;
+
+const browserLessConnect = async () => {
+  if(!instance) {
+    return await puppeteer.connect({
+      browserWSEndpoint: 'ws://localhost:8082'
+    })
+  }
+  
+  return instance
+}
+
+export const getGoogleSearchResultsByQueriesBrowserless = async (queries: string[]) => {
+
+  const browser = await browserLessConnect()
+  const queriesData: any = []
+
+  for(const query of queries) {
+    const page = await browser.newPage()
+    await page.goto(`https://google.com/search?q=${query}`)
+    await page.screenshot({path: 'failed_picture.png'})
+    await page.waitForSelector("#search", { visible: true, timeout: 10000 });
+    const links = await page.evaluate(() => {
+      const links = Array.from(document.querySelectorAll('.yuRUbf'))
+      const data = links.map(link => {
+        return {
+          link: link.querySelector('a').getAttribute('href'),
+          title: link.querySelector('h3').textContent.trim(),
+        }
+      })
+      return data
+    })
+    queriesData.push({ links: links, query })
+    await page.close()
+  }
+
+  browser.close()
+  return queriesData;
+}
+
+export const getGoogleBrowserlessCluster = async (queries: string[]) => {
+
+  const cluster = await ClusterConnect.connect({
+    concurrency: ClusterConnect.CONCURRENCY_BROWSER,
+    maxConcurrency: 10,
+    monitor: true,
+    puppeteer: puppeteerCore, 
+    timeout: 60000,
+    puppeteerOptions: {
+      browserWSEndpoint: 'ws://localhost:8082',
+    }
+  })
+
+  await cluster.task(async ({ page, data: query }) => {
+    await page.goto(`https://google.com/search?q=${query}`)
+    await page.waitForSelector("#search", { visible: true, timeout: 30000 });
+    await page.evaluate(() => {
+      const links = Array.from(document.querySelectorAll('.yuRUbf'))
+      const data = links.map(link => {
+        return {
+          link: link.querySelector('a').getAttribute('href'),
+          title: link.querySelector('h3').textContent.trim(),
+        }
+      })
+      return data
+    })
+    await page.close()
+  })
+
+  await cluster.idle();
+  await cluster.close();
+}
+
 
 export const getGoogleSearchResultsByQueries = async (queries: string[]) => {
 
   const cluster = await Cluster.launch({
     concurrency: Cluster.CONCURRENCY_PAGE,
-    maxConcurrency: 100,
+    maxConcurrency: 50,
     monitor: false,
     timeout: 60000,
     puppeteerOptions: {
-      args: ['--lang=en-US', '--window-size=1920,1080'],
+      args: [
+        '--lang=en-US', 
+        '--window-size=1920,1080',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+      ],
       defaultViewport: null,
       headless: true,
     }
   })
+
 
 
   const queriesData: any = []
@@ -64,6 +147,7 @@ export const getGoogleSearchResultsByQueries = async (queries: string[]) => {
     })
 
     queriesData.push({ links: data, query })
+    await page.close()
   })
 
   for (const query of queries) cluster.queue(query)
@@ -75,12 +159,48 @@ export const getGoogleSearchResultsByQueries = async (queries: string[]) => {
 }
 
 
+export const getGoogleSearchResultsByLinksBrowserless = async (links: string[]) => {
+
+  const browser = await browserLessConnect()
+  const websiteData: any = []
+
+  for(const link of links) {
+    const page = await browser.newPage()
+    await page.goto(link)
+    if (!Boolean(link)) return;
+
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'en-US'
+    })
+
+    await page.goto(link, { waitUntil: 'load', timeout: 0 })
+
+    const type = websiteType(link)
+
+    if (type === 'youtube') {
+      // const data = await evaluateYoutubeData(page)
+
+      websiteData.push([])
+    }
+
+    if (type === 'general') {
+      const data = await evaluateGeneralWebsite(page)
+
+      websiteData.push(data)
+    }
+    page.close()
+
+  }
+
+  browser.close()
+  return websiteData
+}
 
 
 export const getWebsiteDataByLink = async (links: string[]) => {
   const cluster = await Cluster.launch({
     concurrency: Cluster.CONCURRENCY_PAGE,
-    maxConcurrency: 100,
+    maxConcurrency: 50,
     monitor: false,
     timeout: 30000,
     puppeteerOptions: {
@@ -108,9 +228,9 @@ export const getWebsiteDataByLink = async (links: string[]) => {
     const type = websiteType(url)
 
     if (type === 'youtube') {
-      const data = await evaluateYoutubeData(page)
+      // const data = await evaluateYoutubeData(page)
 
-      websiteData.push(data)
+      websiteData.push([])
     }
 
     if (type === 'general') {
@@ -129,8 +249,11 @@ export const getWebsiteDataByLink = async (links: string[]) => {
   return websiteData
 }
 
-const websiteType = (url: string): 'youtube' | 'general' => {
+const websiteType = (url: string): 'youtube' | 'general' | 'instagram' | 'twitter' | 'facebook' => {
   if (/youtube.com/gmi.test(url)) return 'youtube'
+  if (/twitter.com/gmi.test(url)) return 'twitter'
+  if (/facebook.com/gmi.test(url)) return 'facebook'
+  if (/instagram.com/gmi.test(url)) return 'instagram'
 
   return 'general'
 }
@@ -143,14 +266,14 @@ const evaluateGeneralWebsite = async (page: Page) => {
   })
 
   const metaData = await getPageMetaData(page)
-
+  await page.close()
   const doc = new JSDOM(data)
   const reader = new Readability(doc.window.document)
 
   return { html: reader.parse()?.content, metaData }
 }
 
-const evaluateYoutubeData = async (page: Page) => {
+export const evaluateYoutubeData = async (page: Page) => {
   const data = await page.evaluate(() => {
     var videos = Array.from(document.querySelectorAll('ytd-compact-video-renderer'));
 
@@ -178,6 +301,36 @@ const getPageMetaData = async (page: Page) => {
 
     const title = document.title
 
+    const getFavicon = () => {
+        var favicon = '';
+        var nodeList = document.getElementsByTagName("link");
+        for (var i = 0; i < nodeList.length; i++)
+        {
+            if((nodeList[i].getAttribute("rel") == "icon")||(nodeList[i].getAttribute("rel") == "shortcut icon"))
+            {
+                favicon = nodeList[i].getAttribute("href");
+            }
+        }
+        return favicon;        
+    }
+
+    const validURL = (str: string) =>  {
+      var pattern = new RegExp('^(https?:\\/\\/)?'+ // protocol
+        '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
+        '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+        '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
+        '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
+        '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
+    
+      return !!pattern.test(str);
+    }
+
+    const url = location.href
+
+    const allImages = Array.from(document.querySelectorAll('img')).map(img => img.src)
+
+    const favicon = getFavicon()
+  
     const keywords = metas
       .filter(meta => meta?.getAttribute('name') === 'keywords')
       .map(meta => meta?.getAttribute('content')).join(',')
@@ -202,13 +355,13 @@ const getPageMetaData = async (page: Page) => {
 
     const images = [...facebook.filter(o => o.property === 'og:image' || /image/gmi.test(o.property)),
     ...twitter.filter(o => (o.property === 'twitter:image' || /image/gmi.test(o.property)))
-    ].map(o => o?.content)
+    ].map(o => o?.content).filter(validURL)
 
     const description = [...facebook.filter(o => o.property === 'og:description' || /description/gmi.test(o.property)),
     ...twitter.filter(o => (o.property === 'twitter:image' || /image/gmi.test(o.property)))
     ].map(o => o?.content)
 
-    return { title, keywords, facebook, twitter, images, description: [...description, metaDescription] }
+    return { title, keywords, facebook, twitter, images, description: [...description, metaDescription], favicon, url, allImages}
   })
 
   return metaData

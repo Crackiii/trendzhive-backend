@@ -52,3 +52,6 @@ export const QUERIES_QUEUE_JOB_RUNNING = "scrapper:queries_queue:running"
 // await cluster.close()
 
 export const GLOBAL_ERRORS_KEY = "scrapper:errors"
+
+
+export const BROWSERLESS = 'browserless:queries:data'

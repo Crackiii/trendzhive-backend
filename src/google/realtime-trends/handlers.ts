@@ -18,6 +18,11 @@ import { checkScrappingStatus } from './services'
  * Refill it if not
 */
 export const checkLinksQueue = cron.schedule('*/1 * * * * *', async () => {
+
+  const linksOffset = await getOffset(constants.REALTIME_LINKS_OFFSET_KEY)
+
+  if (linksOffset > 288) await setQueueStatus(constants.LINKS_QUEUE_STATUS, 'Completed...')
+
   const isBusy = await isQueueBusy(constants.LINKS_DATA_QUEUE)
 
   await setQueueStatus(constants.LINKS_QUEUE_STATUS, isBusy ? 'Busy' : 'Idle')
@@ -31,12 +36,13 @@ export const checkLinksQueue = cron.schedule('*/1 * * * * *', async () => {
 
   await emptyQueue(constants.LINKS_DATA_QUEUE)
 
-  const linksOffset = await getOffset(constants.REALTIME_LINKS_OFFSET_KEY)
+
   const links = await getLinks(linksOffset)
-  
+
   if (!links.length) await putLinks()
 
-  if (links.length < 30) return
+  if (links.length < 30 && linksOffset < 288) return
+
 
   for (const link of links) {
     fillQueueWithData(constants.LINKS_DATA_QUEUE, link)
@@ -141,8 +147,8 @@ export const checkQueriesQueue = cron.schedule('*/1 * * * * *', async () => {
 })
 
 
-
 /** 
  * Check scrapping status
 */
 cron.schedule('*/1 * * * * *', checkScrappingStatus)
+

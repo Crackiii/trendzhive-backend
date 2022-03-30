@@ -11,7 +11,7 @@
     "dev": "tsc && node dist/index.js",
     "scrap:google:search": "tsc && node dist/google/search-handlers.js",
     "scrap:google:trends": "tsc && node dist/google/related-search-handlers.js",
-    "scrap:google:links": "tsc && node dist/google/links-handlers.js",
+    "scrap:browserless": "tsc && node dist/google/common/google-search.js",
     "scrap:google:realtime:trends": "tsc && node dist/google/realtime-trends/handlers.js"
   },
   "keywords": [],
@@ -19,10 +19,11 @@
   "license": "ISC",
   "dependencies": {
     "@mozilla/readability": "^0.4.2",
-    "@prisma/client": "^3.10.0",
+    "@prisma/client": "^3.11.1",
     "axios": "^0.24.0",
     "axios-https-proxy-fix": "^0.17.1",
     "bull": "^4.7.0",
+    "bullmq": "^1.78.1",
     "express": "^4.17.3",
     "jsdom": "^19.0.0",
     "mysql": "^2.18.1",
@@ -31,6 +32,8 @@
     "pg": "^8.7.3",
     "puppeteer": "^11.0.0",
     "puppeteer-cluster": "^0.23.0",
+    "puppeteer-cluster-connect": "^0.0.8",
+    "puppeteer-core": "^13.5.1",
     "queue": "^6.0.2",
     "redis": "^4.0.4",
     "uuid": "^8.3.2"

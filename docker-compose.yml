@@ -49,3 +49,12 @@ services:
     restart: always
     ports:
       - 8080:8080
+
+  browserless:
+    image: browserless/chrome:latest
+    container_name: "browserless"
+    environment:
+      - DEBUG=browserless/chrome
+      - MAX_CONCURRENT_SESSIONS=100
+    ports:
+        - 8082:3000

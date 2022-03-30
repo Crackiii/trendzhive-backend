@@ -1,7 +1,7 @@
 import Bull = require("bull")
 import { getRedisClient } from "../../redis/client"
-import { storiesQueue, idsQueue, linksQueue, queriesQueue } from "./bull/queues"
-import { GLOBAL_ERRORS_KEY, IDS_DATA_QUEUE, LINKS_DATA_QUEUE, QUERY_DATA_QUEUE, STORY_DATA_QUEUE } from "./constants"
+import { storiesQueue, idsQueue, linksQueue, queriesQueue, browserlessQueue } from "./bull/queues"
+import { BROWSERLESS, GLOBAL_ERRORS_KEY, IDS_DATA_QUEUE, LINKS_DATA_QUEUE, QUERY_DATA_QUEUE, STORY_DATA_QUEUE } from "./constants"
 
 
 /** 
@@ -20,6 +20,9 @@ export const fillQueueWithData = async (queue: string, data: any) => {
     }
     case QUERY_DATA_QUEUE: {
       return queriesQueue.add(data)
+    }
+    case BROWSERLESS: {
+      return browserlessQueue.add(data)
     }
   }
 }
