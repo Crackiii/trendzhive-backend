@@ -29,8 +29,8 @@ model story_ids {
 
 model story_data {
   id               Int      @id @default(autoincrement())
-  related_queries  Json[]
-  related_articles Json[]
+  related_queries  Json  
+  related_articles Json
   related_story_id String   @db.VarChar(255)
   created_at       DateTime @default(now())
   updated_at       DateTime @default(now())
@@ -39,7 +39,7 @@ model story_data {
 model query_data {
   id            Int      @id @default(autoincrement())
   query         String
-  links         Json[]
+  links         Json
   related_story String   @db.VarChar(255)
   created_at    DateTime @default(now())
   updated_at    DateTime @default(now())
@@ -48,24 +48,24 @@ model query_data {
 model website_data {
   id                Int      @id @default(autoincrement())
   titles            String
-  descriptions      Json[]
+  descriptions      Json
   keywords          String
   favicon           String
-  social            Json[]
-  images            Json[]
+  social            Json
+  images            Json
   html              String
   url               String
-  all_images        Json[]
+  all_images        Json
   is_trending       String
-  related_articles  Json[]
+  related_articles  Json
   related_category  String
   related_country   String
-  related_links     Json[]
-  related_news      Json[]
-  related_products  Json[]
-  related_queries   Json[]
+  related_links     Json
+  related_news      Json
+  related_products  Json
+  related_queries   Json
   related_query     String
-  related_videos    Json[]
+  related_videos    Json
   short_description String
   created_at        DateTime @default(now())
   updated_at        DateTime @default(now())

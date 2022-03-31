@@ -139,8 +139,8 @@ export const putStoryDetails = async ({ queries, articles, id }: PutStoryDetails
   const query = {
     text: `INSERT INTO story_data(related_queries, related_articles, related_story_id) VALUES($1, $2, $3)`,
     values: [
-      `${queries}`,
-      `${articles}`,
+      {queries},
+      {articles},
       `${id}`
     ]
   }
@@ -195,7 +195,7 @@ export const putQueryResults = async ({ query, links, id }: PutQueryResultsParam
     text: `INSERT INTO query_data(query, links, related_story) VALUES($1, $2, $3)`,
     values: [
       `${query}`,
-      `${links}`,
+      {links},
       `${id}`
     ]
   }
@@ -306,21 +306,21 @@ export const putWebsiteData = async ({ title, descriptions, keywords, social, im
     values: [
       `${keywords}`,
       `${favicon}`,
-      `${social}`,
+      {social},
       `${url}`,
-      `${title}`,
-      `${images}`,
-      `${allImages}`,
-      `${descriptions}`,
+      {titles: title},
+      {images},
+      {allImages},
+      {descriptions},
       `${short_description}`,
       `${related_country} - ${related_country_short}`,
       `${related_category} - ${related_category_short}`,
-      `${related_links}`, // no need to stringify
-      `${related_articles}`,// no need to stringify
-      `${related_queries}`,// no need to stringify
-      '---RELATED VIDEOS---',
-      '---RELATED NEWS---',
-      '---RELATED PRODUCTS---',
+        {related_links}, // no need to stringify
+        {related_articles},// no need to stringify
+        {related_queries},// no need to stringify
+      {},
+      {},
+      {},
       `${html}`,
       `${true}`,
       `${related_query}`,
