@@ -315,9 +315,9 @@ export const putWebsiteData = async ({ title, descriptions, keywords, social, im
       `${short_description}`,
       `${related_country} - ${related_country_short}`,
       `${related_category} - ${related_category_short}`,
-      `${JSON.stringify(related_links)}`,
-      `${JSON.stringify(related_articles)}`,
-      `${JSON.stringify(related_queries)}`,
+      `${related_links}`, // no need to stringify
+      `${related_articles}`,// no need to stringify
+      `${related_queries}`,// no need to stringify
       '---RELATED VIDEOS---',
       '---RELATED NEWS---',
       '---RELATED PRODUCTS---',

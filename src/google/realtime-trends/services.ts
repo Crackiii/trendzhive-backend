@@ -112,7 +112,19 @@ storiesQueue.process(1, async (job) => {
   try {
     const googleSearchResults = await axios.post('https://google.trendscads.com/google-search/queries', { queries: job.data.queries })
 
-    if (/Failed to launch the browser process/gmi.test(googleSearchResults.data)) {
+    if(googleSearchResults.data.errors)  {
+      for(const error of googleSearchResults.data.errors) {
+        setGlobalError({
+          status: 'Stories Queue',
+          status_code: null,
+          reason: error,
+          job_id: `${job.id}`,
+          data: job.data
+        })
+      }
+    }
+
+    if (/Failed to launch the browser process/gmi.test(googleSearchResults.data.queriesData)) {
       setGlobalError({
         status: 'Stories Queue',
         status_code: 500,
@@ -123,7 +135,7 @@ storiesQueue.process(1, async (job) => {
       return;
     }
 
-    for (const result of googleSearchResults.data) {
+    for (const result of googleSearchResults.data.queriesData) {
       await putQueryResults({
         query: result.query,
         links: result.links,
@@ -152,20 +164,32 @@ queriesQueue.process(1, async (job) => {
       .filter((link: string) => link.slice(link.length - 4) !== '.pdf'); // get rid of pdf links
     const query_id = job.data.query_id;
 
-    const websitesData = await axios.post('https://google.trendscads.com/google-search/links', { links })
+    const results = await axios.post('https://google.trendscads.com/google-search/links', { links })
+    
+    if(results.data.errors)  {
+      for(const error of results.data.errors) {
+        setGlobalError({
+          status: 'Queries Queue',
+          status_code: null,
+          reason: error,
+          job_id: `${job.id}`,
+          data: job.data
+        })
+      }
+    }
 
-    if (/Failed to launch the browser process/gmi.test(websitesData.data)) {
+    if (/Failed to launch the browser process/gmi.test(results.data.websiteData)) {
       setGlobalError({
         status: 'Queries Queue',
         status_code: 500,
-        reason: websitesData.data,
+        reason: results.data.websiteData,
         job_id: `${job.id}`,
-        data: job.data.queries
+        data: job.data.links
       })
       return;
     }
 
-    for (const website of websitesData.data) {
+    for (const website of results.data.websiteData) {
       await putWebsiteData({
         title: [website.metaData.title],
         keywords: website.metaData.keywords,
