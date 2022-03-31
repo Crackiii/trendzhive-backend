@@ -1,6 +1,6 @@
 import * as cron from 'node-cron'
 import * as constants from './constants'
-import { getLinks, getQueryResults, getStoriesDetails, getStoriesIds, putLinks } from './queries.db'
+import { getLinks, getQueryData, getStoryData, getStoriesIds, putLinks } from './queries.db'
 import {
   emptyQueue,
   fillQueueWithData,
@@ -100,13 +100,13 @@ export const checkStoriesQueue = cron.schedule('*/1 * * * * *', async () => {
   await emptyQueue(constants.STORY_DATA_QUEUE)
 
   const storiesOffset = await getOffset(constants.REALTIME_STORIES_OFFSET_KEY)
-  const stories: any = await getStoriesDetails(storiesOffset)
+  const stories: any = await getStoryData(storiesOffset)
 
   if (!Boolean(stories.length) || stories.length < 30) return
 
 
   for (const story of stories) {
-    const related_queries = JSON.parse((story['related_queries']))
+    const related_queries = story['related_queries']['queries']
 
     fillQueueWithData(constants.STORY_DATA_QUEUE, { queries: related_queries, story_id: story.id })
   }
@@ -134,12 +134,12 @@ export const checkQueriesQueue = cron.schedule('*/1 * * * * *', async () => {
   await emptyQueue(constants.QUERY_DATA_QUEUE)
 
   const queriesOffset = await getOffset(constants.REALTIME_QUERIES_OFFSET_KEY)
-  const queriesWebsites = await getQueryResults(queriesOffset)
+  const queryData = await getQueryData(queriesOffset)
 
-  if (!queriesWebsites.length || queriesWebsites.length < 30) return
+  if (!queryData.length || queryData.length < 30) return
 
-  for (const query of queriesWebsites) {
-    const links = JSON.parse((query['links']))
+  for (const query of queryData) {
+    const links = query['links']['links']
     fillQueueWithData(constants.QUERY_DATA_QUEUE, { links, query_id: query.id })
   }
 

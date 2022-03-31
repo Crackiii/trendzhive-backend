@@ -10,7 +10,7 @@ import {
 import * as constants from './constants'
 import { createTitle, getRedisValue, setQueueStatus } from "./utils"
 import { idsQueue, linksQueue, queriesQueue, storiesQueue } from "./bull/queues"
-import { putQueryResults, putStoriesIds, putStoryDetails, putWebsiteData, setGlobalError } from "./queries.db"
+import { putQueryData, putStoriesIds, putStoryData, putWebsiteData, setGlobalError } from "./queries.db"
 import { getStoryDetailById } from "../../api/common"
 import { Job } from "bull"
 import axios from "axios"
@@ -88,7 +88,7 @@ idsQueue.process(1, async (job) => {
     const articles = storyDetails.articles
     const relatedQueries = JSON.parse(storyDetails.relatedQueries).default.queries.map((q: any) => q.query)
 
-    await putStoryDetails({
+    await putStoryData({
       queries: relatedQueries,
       articles,
       id: job.data.id
@@ -136,7 +136,7 @@ storiesQueue.process(1, async (job) => {
     }
 
     for (const result of googleSearchResults.data.queriesData) {
-      await putQueryResults({
+      await putQueryData({
         query: result.query,
         links: result.links,
         id: job.data.story_id,

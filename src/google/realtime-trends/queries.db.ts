@@ -107,7 +107,7 @@ export const putStoriesIds = async ({ country, category, id, related_link }: Put
   }
 }
 
-export const getStoriesDetails = async (offset: number) => {
+export const getStoryData = async (offset: number) => {
   try {
     const results = await postgresClient.query(
       `SELECT id, related_queries FROM story_data 
@@ -119,7 +119,7 @@ export const getStoriesDetails = async (offset: number) => {
     return results.rows
   } catch (error) {
     setGlobalError({
-      status: 'Database getStoriesDetails()',
+      status: 'Database getStoryData()',
       status_code: error.statusCode,
       reason: error.message,
       job_id: 'GET',
@@ -129,12 +129,12 @@ export const getStoriesDetails = async (offset: number) => {
   }
 }
 
-interface PutStoryDetailsParams {
+interface PutStoryDataParams {
   queries: string[]
   articles: any[]
   id: string
 }
-export const putStoryDetails = async ({ queries, articles, id }: PutStoryDetailsParams) => {
+export const putStoryData = async ({ queries, articles, id }: PutStoryDataParams) => {
 
   const query = {
     text: `INSERT INTO story_data(related_queries, related_articles, related_story_id) VALUES($1, $2, $3)`,
@@ -151,7 +151,7 @@ export const putStoryDetails = async ({ queries, articles, id }: PutStoryDetails
     return true
   } catch (error) {
     setGlobalError({
-      status: 'Database putStoryDetails()',
+      status: 'Database putStoryData()',
       status_code: error.statusCode,
       reason: error.message,
       job_id: 'PUT',
@@ -162,7 +162,7 @@ export const putStoryDetails = async ({ queries, articles, id }: PutStoryDetails
 }
 
 
-export const getQueryResults = async (offset: number) => {
+export const getQueryData = async (offset: number) => {
   try {
     const results = await postgresClient.query(
       `SELECT id, links FROM query_data
@@ -174,7 +174,7 @@ export const getQueryResults = async (offset: number) => {
     return results.rows
   } catch (error) {
     setGlobalError({
-      status: 'Database getQueryResults()',
+      status: 'Database getQueryData()',
       status_code: error.statusCode,
       reason: error.message,
       job_id: 'GET',
@@ -184,12 +184,12 @@ export const getQueryResults = async (offset: number) => {
   }
 }
 
-interface PutQueryResultsParams {
+interface PutQueryDataParams {
   query: string
   links: any[]
   id: string
 }
-export const putQueryResults = async ({ query, links, id }: PutQueryResultsParams) => {
+export const putQueryData = async ({ query, links, id }: PutQueryDataParams) => {
 
   const sqlQuery = {
     text: `INSERT INTO query_data(query, links, related_story) VALUES($1, $2, $3)`,
@@ -205,7 +205,7 @@ export const putQueryResults = async ({ query, links, id }: PutQueryResultsParam
     return true
   } catch (error) {
     setGlobalError({
-      status: 'Database putQueryResults()',
+      status: 'Database putQueryData()',
       status_code: error.statusCode,
       reason: error.message,
       job_id: 'PUT',
