@@ -139,8 +139,8 @@ export const putStoryDetails = async ({ queries, articles, id }: PutStoryDetails
   const query = {
     text: `INSERT INTO story_data(related_queries, related_articles, related_story_id) VALUES($1, $2, $3)`,
     values: [
-      `${JSON.stringify(queries)}`,
-      `${JSON.stringify(articles)}`,
+      `${queries}`,
+      `${articles}`,
       `${id}`
     ]
   }
@@ -195,7 +195,7 @@ export const putQueryResults = async ({ query, links, id }: PutQueryResultsParam
     text: `INSERT INTO query_data(query, links, related_story) VALUES($1, $2, $3)`,
     values: [
       `${query}`,
-      `${JSON.stringify(links)}`,
+      `${links}`,
       `${id}`
     ]
   }
@@ -306,12 +306,12 @@ export const putWebsiteData = async ({ title, descriptions, keywords, social, im
     values: [
       `${keywords}`,
       `${favicon}`,
-      `${JSON.stringify(social)}`,
+      `${social}`,
       `${url}`,
-      `${JSON.stringify(title)}`,
-      `${JSON.stringify(images)}`,
-      `${JSON.stringify(allImages)}`,
-      `${JSON.stringify(descriptions)}`,
+      `${title}`,
+      `${images}`,
+      `${allImages}`,
+      `${descriptions}`,
       `${short_description}`,
       `${related_country} - ${related_country_short}`,
       `${related_category} - ${related_category_short}`,
@@ -367,7 +367,7 @@ export const setGlobalError = async ({status, status_code, reason, job_id, data}
       `${status_code || '-'}`,
       `${reason || '-'}`,
       `${job_id || '-'}`,
-      `${JSON.stringify(data || '-') || '-'}`,
+      `${data || '-'|| '-'}`,
     ]
   }
   try {
