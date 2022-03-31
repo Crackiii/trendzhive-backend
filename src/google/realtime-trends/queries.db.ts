@@ -1,6 +1,5 @@
 import { realtime_categories, realtime_countries } from "../../config"
 import { getPostgresClient } from "../../postgres/client"
-import { setGlobalError } from "./utils"
 
 const postgresClient = getPostgresClient()
 
@@ -17,7 +16,13 @@ export const getLinks = async (offset: number) => {
 
     return results.rows
   } catch (error) {
-    setGlobalError(`Error database getLinks() : ${error.message}`)
+    setGlobalError({
+      status: 'Database getLinks()',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: 'GET',
+      data: '-'
+    })
     throw new Error(error)
   }
 }
@@ -32,12 +37,18 @@ export const putLinks = async () => {
         await postgresClient.query(`
           INSERT INTO 
           scrapping_links(category, category_short, country, country_short)
-            VALUES('-', '${category}', '${countryName.trim()}', '${countryCode.trim()}')
+            VALUES('${category.split('-')[1].trim()}', '${category.split('-')[0].trim()}', '${countryName.trim()}', '${countryCode.trim()}')
         `)
       }
     }
   } catch (error) {
-    setGlobalError(`Error database putLinks() : ${error.message}`)
+    setGlobalError({
+      status: 'Database putLinks()',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: 'PUT',
+      data: '-'
+    })
     throw new Error(error)
   }
 }
@@ -54,7 +65,13 @@ export const getStoriesIds = async (offset: number) => {
 
     return results.rows
   } catch (error) {
-    setGlobalError(`Error database getStoriesIds(): ${error.message}`)
+    setGlobalError({
+      status: 'Database getStoriesIds()',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: 'GET',
+      data: '-'
+    })
     throw new Error(error)
   }
 }
@@ -64,13 +81,14 @@ interface PutStoryIdsParams {
   country: string
   category: string
   id: string
+  related_link: string
 }
 
-export const putStoriesIds = async ({ country, category, id }: PutStoryIdsParams) => {
+export const putStoriesIds = async ({ country, category, id, related_link }: PutStoryIdsParams) => {
 
   const query = {
     text: `INSERT INTO story_ids (country, category, story_id, related_link) VALUES ($1, $2, $3, $4)`,
-    values: [country, category, id, '-']
+    values: [country, category, id, related_link]
   }
 
   try {
@@ -78,7 +96,13 @@ export const putStoriesIds = async ({ country, category, id }: PutStoryIdsParams
 
     return true
   } catch (error) {
-    setGlobalError(`Error database putStoriesIds(): ${error.message}`)
+    setGlobalError({
+      status: 'Database putStoriesIds()',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: 'PUT',
+      data: '-'
+    })
     throw new Error(error)
   }
 }
@@ -94,7 +118,13 @@ export const getStoriesDetails = async (offset: number) => {
 
     return results.rows
   } catch (error) {
-    setGlobalError(`Error database getStoriesDetails(): ${error.message}`)
+    setGlobalError({
+      status: 'Database getStoriesDetails()',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: 'GET',
+      data: '-'
+    })
     throw new Error(error)
   }
 }
@@ -120,7 +150,13 @@ export const putStoryDetails = async ({ queries, articles, id }: PutStoryDetails
 
     return true
   } catch (error) {
-    setGlobalError(`Error database putStoryDetails(): ${error.message}`)
+    setGlobalError({
+      status: 'Database putStoryDetails()',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: 'PUT',
+      data: '-'
+    })
     throw new Error(error)
   }
 }
@@ -137,7 +173,13 @@ export const getQueryResults = async (offset: number) => {
 
     return results.rows
   } catch (error) {
-    setGlobalError(`Error database getQueryResults(): ${error.message}`)
+    setGlobalError({
+      status: 'Database getQueryResults()',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: 'GET',
+      data: '-'
+    })
     throw new Error(error)
   }
 }
@@ -162,7 +204,13 @@ export const putQueryResults = async ({ query, links, id }: PutQueryResultsParam
     await postgresClient.query(sqlQuery)
     return true
   } catch (error) {
-    setGlobalError(`Error database putQueryResults(): ${error.message}`)
+    setGlobalError({
+      status: 'Database putQueryResults()',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: 'PUT',
+      data: '-'
+    })
     throw new Error(error)
   }
 }
@@ -190,7 +238,13 @@ export const getWebsitesData = async (offset: number) => {
       return row
     })
   } catch (error) {
-    setGlobalError(`Error database getWebsitesData(): ${error.message}`)
+    setGlobalError({
+      status: 'Database getWebsitesData()',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: 'GET',
+      data: '-'
+    })
     throw new Error(error)
   }
 }
@@ -199,6 +253,7 @@ export const getWebsitesData = async (offset: number) => {
 interface PutWebsiteDataParams {
   title: string[]
   descriptions: string[]
+  short_description: string;
   keywords: string
   social: any[]
   images: string[]
@@ -208,31 +263,124 @@ interface PutWebsiteDataParams {
   favicon: string
   allImages: string[]
 }
-export const putWebsiteData = async ({ title, descriptions, keywords, social, images, html, related_query_id, url, favicon, allImages }: PutWebsiteDataParams) => {
+export const putWebsiteData = async ({ title, descriptions, keywords, social, images, html, related_query_id, url, favicon, allImages, short_description }: PutWebsiteDataParams) => {
 
+  const query_data =  await postgresClient.query(`SELECT related_story, links, query FROM query_data WHERE id = $1`, [related_query_id]);
+  const related_queries_articles = await postgresClient.query(`SELECT related_articles, related_queries, related_story_id FROM story_data WHERE id = $1`, [query_data.rows[0].related_story]);
+  const category_country = await postgresClient.query(`SELECT related_link FROM story_ids WHERE id = $1`, [related_queries_articles.rows[0].related_story_id]);
+  const related_link_data = await postgresClient.query(`SELECT country, country_short, category, category_short FROM scrapping_links WHERE id = $1`, [category_country.rows[0].related_link]);
 
+    const related_links = query_data.rows[0].links;
+    const related_query = query_data.rows[0].query;
+    const related_articles =   related_queries_articles.rows[0].related_articles;
+    const related_queries =   related_queries_articles.rows[0].related_queries;
+    const related_country = related_link_data.rows[0].country;
+    const related_country_short = related_link_data.rows[0].country_short;
+    const related_category = related_link_data.rows[0].category;
+    const related_category_short = related_link_data.rows[0].category_short;
 
   const query = {
-    text: `INSERT INTO website_data(titles, descriptions, keywords, social, images, html, related_query_id, favicon, url, all_images) 
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    text: `INSERT INTO website_data(
+              keywords            ,  
+              favicon             ,
+              social              ,
+              url                 ,
+              titles              ,
+              images              ,
+              all_images          ,
+              descriptions        ,
+              short_description   ,
+              related_country     ,
+              related_category    ,
+              related_links       ,
+              related_articles    ,
+              related_queries     ,
+              related_videos      ,
+              related_news        ,
+              related_products    ,
+              html                ,
+              is_trending         ,
+              related_query
+            ) 
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
     values: [
-      `${JSON.stringify(title)}`,
-      `${JSON.stringify(descriptions)}`,
       `${keywords}`,
-      `${JSON.stringify(social)}`,
-      `${JSON.stringify(images)}`,
-      `${html}`,
-      `${related_query_id}`,
       `${favicon}`,
+      `${JSON.stringify(social)}`,
       `${url}`,
-      `${JSON.stringify(allImages)}`
+      `${JSON.stringify(title)}`,
+      `${JSON.stringify(images)}`,
+      `${JSON.stringify(allImages)}`,
+      `${JSON.stringify(descriptions)}`,
+      `${short_description}`,
+      `${related_country} - ${related_country_short}`,
+      `${related_category} - ${related_category_short}`,
+      `${JSON.stringify(related_links)}`,
+      `${JSON.stringify(related_articles)}`,
+      `${JSON.stringify(related_queries)}`,
+      '---RELATED VIDEOS---',
+      '---RELATED NEWS---',
+      '---RELATED PRODUCTS---',
+      `${html}`,
+      `${true}`,
+      `${related_query}`,
     ]
   }
   try {
     await postgresClient.query(query)
     return true
   } catch (error) {
-    setGlobalError(`Error database putWebsiteData(): ${error.message}`)
+    setGlobalError({
+      status: 'Database putWebsiteData()',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: 'PUT',
+      data: '-'
+    })
+    throw new Error(error)
+  }
+}
+
+
+
+
+interface ErrorParams {
+  status: string
+  status_code: number
+  reason: string
+  job_id: string
+  data: any
+}
+export const setGlobalError = async ({status, status_code, reason, job_id, data}: ErrorParams) => {
+
+  const query = {
+    text: `INSERT INTO scrapping_errors(
+              status            ,  
+              status_code       ,  
+              reason            ,  
+              job_id            ,  
+              data               
+            ) 
+            VALUES($1, $2, $3, $4, $5)`,
+    values: [
+      `${status || '-'}`,
+      `${status_code || '-'}`,
+      `${reason || '-'}`,
+      `${job_id || '-'}`,
+      `${JSON.stringify(data || '-') || '-'}`,
+    ]
+  }
+  try {
+    await postgresClient.query(query)
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+export const getGlobalErrors = async () => {
+  try {
+    return (await postgresClient.query(`SELECT * FROM scrapping_errors`)).rows
+  } catch (error) {
     throw new Error(error)
   }
 }

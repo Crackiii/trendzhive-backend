@@ -8,22 +8,12 @@ import {
   DEFAULT_CATEGORY
 } from "../../api/client"
 import * as constants from './constants'
-import { createTitle, getGlobalErrors, getRedisValue, queueJobsCompleted, setGlobalError, setQueueStatus } from "./utils"
-import * as os from 'os-utils'
+import { createTitle, getRedisValue, setQueueStatus } from "./utils"
 import { idsQueue, linksQueue, queriesQueue, storiesQueue } from "./bull/queues"
-import { putQueryResults, putStoriesIds, putStoryDetails, putWebsiteData } from "./queries.db"
+import { putQueryResults, putStoriesIds, putStoryDetails, putWebsiteData, setGlobalError } from "./queries.db"
 import { getStoryDetailById } from "../../api/common"
 import { Job } from "bull"
 import axios from "axios"
-
-const getCpuUsage = async () => {
-  const usage = await new Promise((resolve) => os.cpuUsage(resolve))
-  const loadAvg = await new Promise((resolve) => resolve(os.loadavg(1)))
-  const sysUpTime = await new Promise((resolve) => resolve(os.sysUptime()))
-  const processUptime = await new Promise((resolve) => resolve(os.processUptime()))
-
-  return { usage, loadAvg, sysUpTime, processUptime }
-}
 
 export const getRealTimeStoryIdsByLink = async (configs?: Configs) => {
   const client = getAxiosClient()
@@ -51,10 +41,7 @@ export const getRealTimeStoryIdsByLink = async (configs?: Configs) => {
 // Processing links queue
 linksQueue.process(1, async (job: Job) => {
 
-  await Promise.all([
-    setQueueStatus(constants.LINKS_QUEUE_CURRENT_JOBS_PROCESSED, await queueJobsCompleted(linksQueue)),
-    setQueueStatus(constants.LINKS_QUEUE_JOB_RUNNING, `${job.data.country_short} - ${job.data.category_short}`)
-  ]).catch(console.log)
+  await setQueueStatus(constants.LINKS_QUEUE_JOB_RUNNING, `${job.data.country_short} - ${job.data.category_short}`)
 
   const category = job.data.category_short
   const country = job.data.country_short
@@ -69,21 +56,26 @@ linksQueue.process(1, async (job: Job) => {
       await putStoriesIds({
         id,
         category,
-        country
+        country,
+        related_link: job.data.id
       })
     }
   } catch (error) {
-    setGlobalError(`Error linksQueue - Job # ${job.id} : ${error.message}`)
+    setGlobalError({
+      status: 'Links Queue',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: `${job.id}`,
+      data: job.data
+    })
   }
 })
 
 // Processing ids queue jobs
 idsQueue.process(1, async (job) => {
 
-  await Promise.all([
-    setQueueStatus(constants.IDS_QUEUE_CURRENT_JOBS_PROCESSED, await queueJobsCompleted(idsQueue)),
-    setQueueStatus(constants.IDS_QUEUE_JOB_RUNNING, job.data.story_id)
-  ])
+  await setQueueStatus(constants.IDS_QUEUE_JOB_RUNNING, job.data.story_id)
+
   try {
     const storyDetails = await getStoryDetailById(
       job.data.story_id,
@@ -102,22 +94,32 @@ idsQueue.process(1, async (job) => {
       id: job.data.id
     })
   } catch (error) {
-    setGlobalError(`Error idsQueue - Job # ${job.id} : ${error.message}`)
+    setGlobalError({
+      status: 'IDS Queue',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: `${job.id}`,
+      data: job.data
+    })
   }
 })
 
 // Processing stories queue jobs
 storiesQueue.process(1, async (job) => {
 
-  await Promise.all([
-    setQueueStatus(constants.STORIES_QUEUE_CURRENT_JOBS_PROCESSED, await queueJobsCompleted(storiesQueue)),
-    setQueueStatus(constants.STORIES_QUEUE_JOB_RUNNING, `Queries to scrap: ${job.data.queries.length}`)
-  ])
+  await setQueueStatus(constants.STORIES_QUEUE_JOB_RUNNING, `Queries to scrap: ${job.data.queries.length}`)
+
   try {
     const googleSearchResults = await axios.post('https://google.trendscads.com/google-search/queries', { queries: job.data.queries })
 
     if (/Failed to launch the browser process/gmi.test(googleSearchResults.data)) {
-      setGlobalError(`Error storiesQueue - Job # ${job.id} : ${googleSearchResults.data}`)
+      setGlobalError({
+        status: 'Stories Queue',
+        status_code: 500,
+        reason: googleSearchResults.data,
+        job_id: `${job.id}`,
+        data: job.data.queries
+      })
       return;
     }
 
@@ -129,17 +131,20 @@ storiesQueue.process(1, async (job) => {
       })
     }
   } catch (error) {
-    setGlobalError(`Error storiesQueue - Job # ${job.id} : ${error.message}`)
+    setGlobalError({
+      status: 'Stories Queue',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: `${job.id}`,
+      data: job.data.queries
+    })
   }
 })
 
 // Processing queries queue jobs
 queriesQueue.process(1, async (job) => {
 
-  await Promise.all([
-    setQueueStatus(constants.QUERIES_QUEUE_CURRENT_JOBS_PROCESSED, await queueJobsCompleted(queriesQueue)),
-    setQueueStatus(constants.QUERIES_QUEUE_JOB_RUNNING, `Links to process: ${job.data.links.length}`)
-  ])
+  await setQueueStatus(constants.QUERIES_QUEUE_JOB_RUNNING, `Links to process: ${job.data.links.length}`)
 
   try {
     const links = job.data.links
@@ -150,7 +155,13 @@ queriesQueue.process(1, async (job) => {
     const websitesData = await axios.post('https://google.trendscads.com/google-search/links', { links })
 
     if (/Failed to launch the browser process/gmi.test(websitesData.data)) {
-      setGlobalError(`Error storiesQueue - Job # ${job.id} : ${websitesData.data}`)
+      setGlobalError({
+        status: 'Queries Queue',
+        status_code: 500,
+        reason: websitesData.data,
+        job_id: `${job.id}`,
+        data: job.data.queries
+      })
       return;
     }
 
@@ -161,6 +172,7 @@ queriesQueue.process(1, async (job) => {
         social: [website.metaData.facebook, website.metaData.twitter],
         images: website.metaData.images,
         html: website.html,
+        short_description: website.short_description,
         descriptions: website.metaData.description,
         url: website.metaData.url,
         favicon: website.metaData.favicon,
@@ -169,7 +181,13 @@ queriesQueue.process(1, async (job) => {
       })
     }
   } catch (error) {
-    setGlobalError(`Error queriesQueue - Job # ${job.id} : ${error.message}`)
+    setGlobalError({
+      status: 'Queries Queue',
+      status_code: error.statusCode,
+      reason: error.message,
+      job_id: `${job.id}`,
+      data: job.data
+    })
   }
 })
 
@@ -200,9 +218,6 @@ export const checkScrappingStatus = async () => {
   const storiesQueueTotalJobsProcessed = await getRedisValue(constants.STORIES_QUEUE_TOTAL_JOBS_PROCESSED);
   const queriesQueueTotalJobsProcessed = await getRedisValue(constants.QUERIES_QUEUE_TOTAL_JOBS_PROCESSED);
 
-  const map = await getGlobalErrors()
-
-  const { usage, loadAvg } = await getCpuUsage()
 
   console.clear()
   console.table({
@@ -222,36 +237,6 @@ export const checkScrappingStatus = async () => {
     [createTitle('idsQueueTotalJobsProcessed')]: JSON.parse(idsQueueTotalJobsProcessed) || 0,
     [createTitle('storiesQueueTotalJobsProcessed')]: JSON.parse(storiesQueueTotalJobsProcessed) || 0,
     [createTitle('queriesQueueTotalJobsProcessed')]: JSON.parse(queriesQueueTotalJobsProcessed) || 0,
-  })
-
-  console.table({
-    'Error 400 - idsQueue': map?.['idsQueue']?.['400'] || '-',
-    'Error 400 - linksQueue': map?.['linksQueue']?.['400'] || '-',
-    'Error 400 - storiesQueue': map?.['storiesQueue']?.['400'] || '-',
-    'Error 400 - queriesQueue': map?.['queriesQueue']?.['400'] || '-',
-    'Error 429 - idsQueue': map?.['idsQueue']?.['429'] || '-',
-    'Error 429 - linksQueue': map?.['linksQueue']?.['429'] || '-',
-    'Error 429 - storiesQueue': map?.['storiesQueue']?.['429'] || '-',
-    'Error 429 - queriesQueue': map?.['queriesQueue']?.['429'] || '-',
-    'Error 429 - getGoogleSearchResultsByQueries': map?.['getGoogleSearchResultsByQueries']?.['429'] || '-',
-    'Error 429 - getWebsiteDataByLink': map?.['getWebsiteDataByLink']?.['429'] || '-',
-    'Error database - getLinks': map?.['getLinks']?.['db'] || '-',
-    'Error database - putLinks': map?.['putLinks']?.['db'] || '-',
-    'Error database - getStoriesIds': map?.['getStoriesIds']?.['db'] || '-',
-    'Error database - putStoriesIds': map?.['putStoriesIds']?.['db'] || '-',
-    'Error database - getStoriesDetails': map?.['getStoriesDetails']?.['db'] || '-',
-    'Error database - putStoryDetails': map?.['putStoryDetails']?.['db'] || '-',
-    'Error database - getQueryResults': map?.['getQueryResults']?.['db'] || '-',
-    'Error database - putQueryResults': map?.['getLinks']?.['db'] || '-',
-    'Error database - getWebsitesData': map?.['getWebsitesData']?.['db'] || '-',
-    'Error database - putWebsiteData': map?.['putWebsiteData']?.['db'] || '-',
-    'Error crawler - getGoogleSearchResultsByQueries': map?.['getGoogleSearchResultsByQueries'] || '-',
-    'Error crawler - getWebsiteDataByLink': map?.['getWebsiteDataByLink'] || '-',
-  })
-
-  console.table({
-    'CPU Usage': Number((Number(usage) * 100).toFixed(2)),
-    'Load Average': Number(Number(loadAvg).toFixed(2)),
   })
 
 }

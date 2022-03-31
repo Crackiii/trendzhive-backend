@@ -1,5 +1,4 @@
-import { getGoogleSearchResultsByQueries } from "./common/google-search";
-import { addGoogleSearchLinks, getSearchTrendsLinksData } from "../database";
+import { getSearchTrendsLinksData } from "../database";
 
 
 export const getSearchTrendsLinksDataFromDB = async () => {
@@ -25,27 +24,5 @@ export const getSearchTrendsLinksDataFromDB = async () => {
 }
 
 
-
-export const scrapGoogleSearch = async () => {
-  const linksData = await getSearchTrendsLinksDataFromDB()
-
-  for (const { topics, queries, data_id, link_id } of linksData) {
-    if (!queries.length && !topics.length) continue;
-
-    const topicsToSearch = topics.map((topic: any) => topic.title)
-
-    const googleSearchLinks = await getGoogleSearchResultsByQueries([...queries, ...topicsToSearch])
-
-    for (const { data } of googleSearchLinks) {
-      if (!data.length) continue;
-      for (const { link, title } of data) {
-        await addGoogleSearchLinks({
-          link, title, data_id, link_id
-        })
-      }
-
-    }
-  }
-}
 
 

@@ -1,6 +1,6 @@
-import axios from 'axios-https-proxy-fix';
 import * as express from 'express'
-import { getGoogleSearchResultsByQueries } from './google/common/google-search';
+
+import { getGlobalErrors } from './google/realtime-trends/queries.db';
 const app = express()
 const port = 3003
 
@@ -73,27 +73,18 @@ app.use(function (_, res, next) {
 });
 
 
-app.get('/all', async (req, res) => {
+app.get('/errors', async (_, res) => {
 
-  const results = await getGoogleSearchResultsByQueries([req.query['q'] as string])
-
-  res.send(results[0]?.links || [])
+  res.sendFile(__dirname + '/public/index.html')
 })
 
-const call = async () => {
 
-  const client = axios.create()
-
-  try {
-    const data = await client.get('https://api.myip.com')
-
-    console.log(data.data)
-  } catch (error) {
-    console.log(error.message)
-  }
-}
-
-call()
+app.get('/get-errors', async (_, res) => {
+  
+    const results = await getGlobalErrors()
+  
+    res.send(results)
+})
 
 
 app.listen(port, () => {

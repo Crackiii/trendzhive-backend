@@ -167,12 +167,12 @@ export const realtime_countries = [
 ]
 
 export const realtime_categories = [
-  'b', //Business
-  'e', //Entertainment
-  'm', //Health,
-  't', //Sci/Tech
-  's', //Sports
-  'h', //Top stories
+  'b - Business', //Business
+  'e - Entertainment', //Entertainment
+  'm - Health', //Health,
+  't - Sci/Tech', //Sci/Tech
+  's - Sports', //Sports
+  'h - Top stories', //Top stories
 ]
 
 export default endpoints

@@ -46,17 +46,38 @@ model query_data {
 }
 
 model website_data {
-  id               Int      @id @default(autoincrement())
-  titles           String
-  descriptions     String
-  keywords         String
-  favicon          String
-  social           String
-  images           String
-  html             String
-  url              String
-  related_query_id String   @db.VarChar(255)
-  all_images       String
-  created_at       DateTime @default(now())
-  updated_at       DateTime @default(now())
+  id                Int      @id @default(autoincrement())
+  titles            String
+  descriptions      String
+  keywords          String
+  favicon           String
+  social            String
+  images            String
+  html              String
+  url               String
+  all_images        String
+  created_at        DateTime @default(now())
+  updated_at        DateTime @default(now())
+  is_trending       String
+  related_articles  String
+  related_category  String
+  related_country   String
+  related_links     String
+  related_news      String
+  related_products  String
+  related_queries   String
+  related_query     String
+  related_videos    String
+  short_description String
+}
+
+model scrapping_errors {
+  id          Int      @id @default(autoincrement())
+  status      String
+  status_code String
+  reason      String
+  job_id      String
+  data        String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now())
 }
