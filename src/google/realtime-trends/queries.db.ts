@@ -251,7 +251,7 @@ export const getWebsitesData = async (offset: number) => {
 
 
 interface PutWebsiteDataParams {
-  title: string[]
+  title: string
   descriptions: string[]
   short_description: string;
   keywords: string
@@ -285,7 +285,7 @@ export const putWebsiteData = async ({ title, descriptions, keywords, social, im
               favicon             ,
               social              ,
               url                 ,
-              titles              ,
+              title              ,
               images              ,
               all_images          ,
               descriptions        ,
@@ -308,7 +308,7 @@ export const putWebsiteData = async ({ title, descriptions, keywords, social, im
       `${favicon}`,
       {social},
       `${url}`,
-      {titles: title},
+      `${title}`,
       {images},
       {allImages},
       {descriptions},

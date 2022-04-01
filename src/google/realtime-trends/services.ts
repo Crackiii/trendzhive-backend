@@ -124,7 +124,7 @@ storiesQueue.process(1, async (job) => {
       }
     }
 
-    if (/Failed to launch the browser process/gmi.test(googleSearchResults.data.queriesData)) {
+    if (/Unable to launch browser, error message: Failed to launch the browser process/gmi.test(googleSearchResults.data)) {
       setGlobalError({
         status: 'Stories Queue',
         status_code: 500,
@@ -191,7 +191,7 @@ queriesQueue.process(1, async (job) => {
 
     for (const website of results.data.websiteData) {
       await putWebsiteData({
-        title: [website.metaData.title],
+        title: website.metaData.title,
         keywords: website.metaData.keywords,
         social: [website.metaData.facebook, website.metaData.twitter],
         images: website.metaData.images,

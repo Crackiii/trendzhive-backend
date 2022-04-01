@@ -47,7 +47,7 @@ model query_data {
 
 model website_data {
   id                Int      @id @default(autoincrement())
-  titles            String
+  title             String
   descriptions      Json
   keywords          String
   favicon           String
