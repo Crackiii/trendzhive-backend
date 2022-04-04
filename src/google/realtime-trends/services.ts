@@ -52,7 +52,7 @@ linksQueue.process(1, async (job: Job) => {
       LOCATION: country
     })
 
-    for (const id of storiesIds) {
+    for (const id of storiesIds.slice(0, 10)) { // Get only 10 stories
       await putStoriesIds({
         id,
         category,

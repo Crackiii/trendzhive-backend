@@ -115,7 +115,7 @@ export const countries = [
   "Luxembourg"
 ]
 
-export const realtime_countries = [
+export const all_trends_countries = [
   "Germany - DE",
   "Argentina - AR",
   "Australia - AU",
@@ -161,6 +161,38 @@ export const realtime_countries = [
   "Thailand - TH",
   "Turkey - TR",
   "Ukraine - UA",
+  "United Kingdom - GB",
+  "United States - US",
+  "Vietnam - VN",
+]
+
+export const realtime_countries = [
+  "Germany - DE",
+  "Argentina - AR",
+  "Australia - AU",
+  "Austria - AT",
+  "Belgium - BE",
+  "Brazil - BR",
+  "Canada - CA",
+  "Chile - CL",
+  "Colombia - CO",
+  "France - FR",
+  "India - IN",
+  "Ireland - IE",
+  "Italy - IT",
+  "Japan - JP",
+  "Malaysia - MY",
+  "Mexico - MX",
+  "Netherlands - NL",
+  "New Zealand - NZ",
+  "Norway - NO",
+  "Philippines - PH",
+  "Poland - PL",
+  "Portugal - PT",
+  "Russia - RU",
+  "Sweden - SE",
+  "Switzerland - CH",
+  "Turkey - TR",
   "United Kingdom - GB",
   "United States - US",
   "Vietnam - VN",

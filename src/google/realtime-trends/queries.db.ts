@@ -86,6 +86,34 @@ interface PutStoryIdsParams {
 
 export const putStoriesIds = async ({ country, category, id, related_link }: PutStoryIdsParams) => {
 
+  // check if story_id already exists
+  try {
+    const results = await postgresClient.query(`
+      SELECT *
+      FROM story_ids
+      WHERE story_id = '${id}'
+    `)
+
+    if (results.rowCount > 0) {
+      setGlobalError({
+        status: 'Database putStoriesIds()',
+        status_code: 409,
+        reason: `Story id already exists - ${id}`,
+        job_id: 'GET',
+        data: `-`
+      })
+      return
+    }
+  } catch(err) {
+    setGlobalError({
+      status: 'Database putStoriesIds()',
+      status_code: 500,
+      reason: err.message,
+      job_id: 'PUT',
+      data: `-`
+    })
+  }
+
   const query = {
     text: `INSERT INTO story_ids (country, category, story_id, related_link) VALUES ($1, $2, $3, $4)`,
     values: [country, category, id, related_link]

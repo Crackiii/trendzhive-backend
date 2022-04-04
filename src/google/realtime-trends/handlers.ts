@@ -1,6 +1,6 @@
 import * as cron from 'node-cron'
 import * as constants from './constants'
-import { getLinks, getQueryData, getStoryData, getStoriesIds, putLinks } from './queries.db'
+import { getLinks, getStoryData, getStoriesIds, putLinks } from './queries.db'
 import {
   emptyQueue,
   fillQueueWithData,
@@ -10,7 +10,7 @@ import {
   setOffset,
   setQueueStatus,
 } from './utils'
-import { idsQueue, linksQueue, queriesQueue, storiesQueue } from './bull/queues'
+import { idsQueue, linksQueue, storiesQueue } from './bull/queues'
 import { checkScrappingStatus } from './services'
 
 /** 
@@ -21,7 +21,7 @@ export const checkLinksQueue = cron.schedule('*/1 * * * * *', async () => {
 
   const linksOffset = await getOffset(constants.REALTIME_LINKS_OFFSET_KEY)
 
-  if (linksOffset > 288) await setQueueStatus(constants.LINKS_QUEUE_STATUS, 'Completed...')
+  if (linksOffset > 173) await setQueueStatus(constants.LINKS_QUEUE_STATUS, 'Completed...')
 
   const isBusy = await isQueueBusy(constants.LINKS_DATA_QUEUE)
 
@@ -41,7 +41,7 @@ export const checkLinksQueue = cron.schedule('*/1 * * * * *', async () => {
 
   if (!links.length) await putLinks()
 
-  if (links.length < 30 && linksOffset < 288) return
+  if (links.length < 1 && linksOffset < 174) return
 
 
   for (const link of links) {
@@ -106,7 +106,7 @@ export const checkStoriesQueue = cron.schedule('*/1 * * * * *', async () => {
 
 
   for (const story of stories) {
-    const related_queries = story['related_queries']['queries']
+    const related_queries = story['related_queries']['queries']?.slice(0, 10) // get only 10 queries
 
     fillQueueWithData(constants.STORY_DATA_QUEUE, { queries: related_queries, story_id: story.id })
   }
@@ -119,32 +119,32 @@ export const checkStoriesQueue = cron.schedule('*/1 * * * * *', async () => {
  * Check if we have websites links in queue
  * Scrap website data 
 */
-export const checkQueriesQueue = cron.schedule('*/1 * * * * *', async () => {
-  const isBusy = await isQueueBusy(constants.QUERY_DATA_QUEUE)
+// export const checkQueriesQueue = cron.schedule('*/1 * * * * *', async () => {
+//   const isBusy = await isQueueBusy(constants.QUERY_DATA_QUEUE)
 
-  await setQueueStatus(constants.QUERIES_QUEUE_STATUS, isBusy ? 'Busy' : 'Idle')
+//   await setQueueStatus(constants.QUERIES_QUEUE_STATUS, isBusy ? 'Busy' : 'Idle')
 
-  if (isBusy) return
+//   if (isBusy) return
 
-  await setQueueStatus(
-    constants.QUERIES_QUEUE_TOTAL_JOBS_PROCESSED,
-    await getQueueTotalJobs(queriesQueue, 'completed', constants.QUERIES_QUEUE_TOTAL_JOBS_PROCESSED)
-  )
+//   await setQueueStatus(
+//     constants.QUERIES_QUEUE_TOTAL_JOBS_PROCESSED,
+//     await getQueueTotalJobs(queriesQueue, 'completed', constants.QUERIES_QUEUE_TOTAL_JOBS_PROCESSED)
+//   )
 
-  await emptyQueue(constants.QUERY_DATA_QUEUE)
+//   await emptyQueue(constants.QUERY_DATA_QUEUE)
 
-  const queriesOffset = await getOffset(constants.REALTIME_QUERIES_OFFSET_KEY)
-  const queryData = await getQueryData(queriesOffset)
+//   const queriesOffset = await getOffset(constants.REALTIME_QUERIES_OFFSET_KEY)
+//   const queryData = await getQueryData(queriesOffset)
 
-  if (!queryData.length || queryData.length < 30) return
+//   if (!queryData.length || queryData.length < 30) return
 
-  for (const query of queryData) {
-    const links = query['links']['links']
-    fillQueueWithData(constants.QUERY_DATA_QUEUE, { links, query_id: query.id })
-  }
+//   for (const query of queryData) {
+//     const links = query['links']['links']
+//     fillQueueWithData(constants.QUERY_DATA_QUEUE, { links, query_id: query.id })
+//   }
 
-  await setOffset(constants.REALTIME_QUERIES_OFFSET_KEY)
-})
+//   await setOffset(constants.REALTIME_QUERIES_OFFSET_KEY)
+// })
 
 
 /** 
