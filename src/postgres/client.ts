@@ -3,7 +3,7 @@ import { Client } from 'pg'
 
 export const getPostgresClient = () => {
   const postgresClient = new Client({
-    connectionString: 'postgres://utlezgnlachtqt:acb94691359d2f64361b10e67c14b41e58c1fc6e1a96418405d82e1d20c3643e@ec2-99-80-170-190.eu-west-1.compute.amazonaws.com:5432/d8dfjdrps9onjs',
+    connectionString: '',
     ssl: {
       rejectUnauthorized: false
     }
